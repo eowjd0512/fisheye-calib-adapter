@@ -1,0 +1,22 @@
+FROM ubuntu:20.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    libgoogle-glog-dev \
+    libgflags-dev \
+    libeigen3-dev \
+    libopencv-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone https://ceres-solver.googlesource.com/ceres-solver /ceres-solver && \
+    mkdir /ceres-solver/build && \
+    cd /ceres-solver/build && \
+    cmake .. && \
+    make -j$(nproc) && \
+    make install
+
+WORKDIR /workspace
