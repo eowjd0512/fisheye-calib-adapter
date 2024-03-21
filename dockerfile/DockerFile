@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     libgflags-dev \
     libeigen3-dev \
     libopencv-dev \
+    libyaml-cpp-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone https://ceres-solver.googlesource.com/ceres-solver /ceres-solver && \

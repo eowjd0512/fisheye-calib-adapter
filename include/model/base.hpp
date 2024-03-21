@@ -1,6 +1,10 @@
 #ifndef MODEL__BASE_HPP_
 #define MODEL__BASE_HPP_
 
+#include <yaml-cpp/yaml.h>
+
+#include <eigen3/Eigen/Dense>
+#include <iostream>
 #include <memory>
 #include <string>
 
@@ -18,11 +22,13 @@ public:
 
   virtual ~Base() {}
 
+  virtual void parse() = 0;
+  virtual void initialize() = 0;
+  virtual void optimize() = 0;
+  virtual Eigen::Vector2d project() const = 0;
+  virtual Eigen::Vector3d unproject() const = 0;
+  virtual Eigen::MatrixXd calculate_jacobian() const = 0;
   virtual void print() const = 0;
-  virtual void project() const = 0;
-  virtual void unproject() const = 0;
-  virtual void calculate_jacobian() const = 0;
-  virtual void get_jacobian() const = 0;
 
 protected:
   std::string model_name_;

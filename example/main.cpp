@@ -1,7 +1,4 @@
 // #include <ceres/ceres.h>
-
-// #include <Eigen/Dense>
-// #include <iostream>
 // #include <opencv2/opencv.hpp>
 
 #include <string>
@@ -12,10 +9,11 @@
 
 int main(int argc, char ** argv)
 {
-  std::string input_model_name;
-  std::string output_model_name;
-  std::string config_path;
-  std::string dataset_path;
+  // Default values
+  std::string input_model_name = "OcamLib";//"KB8";
+  std::string output_model_name = "EUCM";
+  std::string config_path = std::string(PROJECT_SOURCE_DIR) + "/config";
+  std::string dataset_path = std::string(PROJECT_SOURCE_DIR) + "/dataset";
 
   FCA::Parse(argc, argv, input_model_name, output_model_name, config_path, dataset_path);
 

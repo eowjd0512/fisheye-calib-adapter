@@ -1,5 +1,5 @@
-#ifndef MODEL__EUCM_HPP_
-#define MODEL__EUCM_HPP_
+#ifndef MODEL__OCAMLIB_HPP_
+#define MODEL__OCAMLIB_HPP_
 
 #include <string>
 
@@ -9,10 +9,10 @@ namespace FCA
 {
 namespace model
 {
-class EUCM : public Base
+class OcamLib : public Base
 {
 public:
-  EUCM(const std::string & model_name, const std::string & config_path);
+  OcamLib(const std::string & model_name, const std::string & config_path);
 
   void parse() override;
   void initialize() override;
