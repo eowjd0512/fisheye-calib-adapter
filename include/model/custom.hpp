@@ -1,5 +1,5 @@
-#ifndef MODEL__EUCM_HPP_
-#define MODEL__EUCM_HPP_
+#ifndef MODEL__CUSTOM_HPP_
+#define MODEL__CUSTOM_HPP_
 
 #include <string>
 
@@ -9,22 +9,14 @@ namespace FCA
 {
 namespace model
 {
-class KB8 : public Base
+class Custom : public Base
 {
 public:
   struct Params
   {
-    double fx;
-    double fy;
-    double cx;
-    double cy;
-    double k1;
-    double k2;
-    double k3;
-    double k4;
   };
 
-  KB8(const std::string & model_name, const std::string & config_path);
+  Custom(const std::string & model_name, const std::string & config_path);
 
   void parse() override;
   void initialize() override;

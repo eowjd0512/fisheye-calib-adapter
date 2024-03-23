@@ -24,10 +24,10 @@ public:
 
   virtual void parse() = 0;
   virtual void initialize() = 0;
-  virtual void optimize() = 0;
-  virtual Eigen::Vector2d project() const = 0;
-  virtual Eigen::Vector3d unproject() const = 0;
+  virtual Eigen::Vector2d project(const Eigen::Vector3d & point3d) const = 0;
+  virtual Eigen::Vector3d unproject(const Eigen::Vector2d & point2d) const = 0;
   virtual Eigen::MatrixXd calculate_jacobian() const = 0;
+  virtual void optimize() = 0;
   virtual void print() const = 0;
 
 protected:
