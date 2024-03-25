@@ -10,14 +10,17 @@ namespace FCA
 class Adapter
 {
 public:
-  Adapter(const std::string & dataset_path);
+  Adapter(
+    const FCA::FisheyeCameraModel * const input_model,
+    FCA::FisheyeCameraModel * const output_model);
 
-  void adapt(
-    const FisheyeCameraModel & input_model, FisheyeCameraModel & output_model,
-    bool show = false);
+  void adapt();
+
+  void compare_image(const std::string & image_path, bool show = false);
 
 private:
-  std::string dataset_path_;
+  const FCA::FisheyeCameraModel * const input_model_;
+  FCA::FisheyeCameraModel * const output_model_;
 };
 }  // namespace FCA
 #endif

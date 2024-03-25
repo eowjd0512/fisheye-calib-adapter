@@ -1,0 +1,11 @@
+image:
+  width: 640
+  height: 480
+
+parameter:
+  fx: 5
+  fy: 6
+  cx: 60
+  cy: 50
+  alpha: 3
+  beta: 3

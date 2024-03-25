@@ -1,0 +1,10 @@
+image:
+  width: 640
+  height: 480
+
+parameter:
+  fx: 5
+  fy: 6
+  cx: 60
+  cy: 50
+  coefficients: [1, 2, 3, 4]

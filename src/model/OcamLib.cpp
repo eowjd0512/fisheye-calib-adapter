@@ -18,9 +18,12 @@ void OcamLib::parse()
   // Load the YAML file
   const YAML::Node config = YAML::LoadFile(config_path_ + "/" + model_name_ + ".yml");
 
+  common_params_.width = config["image"]["width"].as<int32_t>();
+  common_params_.height = config["image"]["height"].as<int32_t>();
+
   // Read coefficients
-  distortion_.proj_coeffs = config["coefficients"]["projection"].as<std::vector<double>>();
-  distortion_.unproj_coeffs = config["coefficients"]["unprojection"].as<std::vector<double>>();
+  distortion_.proj_coeffs = config["parameter"]["coefficients"]["projection"].as<std::vector<double>>();
+  distortion_.unproj_coeffs = config["parameter"]["coefficients"]["unprojection"].as<std::vector<double>>();
 
   // Read parameters
   const std::vector<double> affine_parameters =
@@ -28,20 +31,19 @@ void OcamLib::parse()
   distortion_.c = affine_parameters[0];
   distortion_.d = affine_parameters[1];
   distortion_.e = affine_parameters[2];
-  intrinsic_.fx = distortion_.proj_coeffs.at(0);  // approximation
-  intrinsic_.fy = distortion_.proj_coeffs.at(0);  // approximation
-  intrinsic_.cx = config["parameter"]["cx"].as<double>();
-  intrinsic_.cy = config["parameter"]["cy"].as<double>();
+  common_params_.fx = common_params_.fy = distortion_.proj_coeffs.at(0);  // approximation
+  common_params_.cx = config["parameter"]["cx"].as<double>();
+  common_params_.cy = config["parameter"]["cy"].as<double>();
 }
 
 void OcamLib::initialize(
-  const Base::Params & intrinsic, const std::vector<Eigen::Vector3d> & point3d_vec,
+  const Base::Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
 {
   assert(point3d_vec.size() == point2d_vec.size());
 
   // set fx,fy,cx,cy
-  intrinsic_ = intrinsic;
+  common_params_ = common_params;
 
   // set c, d, e
   distortion_.c = 1.0;
@@ -70,7 +72,7 @@ void OcamLib::initialize(
     A(i, 2) = r2;
     A(i, 3) = r3;
     A(i, 4) = r4;
-    b[i] = (u - intrinsic_.cx) * (Z / X);
+    b[i] = (u - common_params_.cx) * (Z / X);
   }
 
   const Eigen::VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
@@ -97,8 +99,8 @@ Eigen::Vector2d OcamLib::project(const Eigen::Vector3d & point3d) const
   const double v = (Y / r) * rho;
 
   Eigen::Vector2d point2d;
-  point2d.x() = (u * distortion_.c) + (v * distortion_.d) + intrinsic_.cx;
-  point2d.y() = (u * distortion_.e) + v + intrinsic_.cy;
+  point2d.x() = (u * distortion_.c) + (v * distortion_.d) + common_params_.cx;
+  point2d.y() = (u * distortion_.e) + v + common_params_.cy;
 
   return point2d;
 }
@@ -141,8 +143,8 @@ void OcamLib::estimate_projection_coefficients(
         A(2 * i, j) = term1 * theta_i;
         A((2 * i) + 1, j) = term2 * theta_i;
       }
-      b[2 * i] = u - intrinsic_.cx;
-      b[(2 * i) + 1] = v - intrinsic_.cy;
+      b[2 * i] = u - common_params_.cx;
+      b[(2 * i) + 1] = v - common_params_.cy;
     }
     const Eigen::VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
     distortion_.proj_coeffs.clear();
@@ -166,9 +168,9 @@ Eigen::Vector3d OcamLib::unproject(const Eigen::Vector2d & point2d) const
   // 1/det(A), where A = [c,d;e,1]
   const double inv_det = 1.0 / (distortion_.c - (distortion_.d * distortion_.e));
 
-  const double px = inv_det * ((u - intrinsic_.cx) - distortion_.d * (v - intrinsic_.cy));
+  const double px = inv_det * ((u - common_params_.cx) - distortion_.d * (v - common_params_.cy));
   const double py =
-    inv_det * (-distortion_.e * (u - intrinsic_.cx) + distortion_.c * (v - intrinsic_.cy));
+    inv_det * (-distortion_.e * (u - common_params_.cx) + distortion_.c * (v - common_params_.cy));
 
   //distance [pixels] of  the point from the image center
   const double r = std::sqrt((px * px) + (py * py));

@@ -1,8 +1,0 @@
-coefficients:
-  projection: [1, 2, 3, 4, 5] # Coefficients for projection from 3D to 2D
-  unprojection: [6, 7, 8, 9, 10, 11] # Coefficients for unprojection from 2D to 3D
-
-parameter:
-  affine: [1.1, 2.2, 3.3] # [c, d, e]
-  cx: 60
-  cy: 50

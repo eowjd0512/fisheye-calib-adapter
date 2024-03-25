@@ -12,13 +12,13 @@ EUCM::EUCM(const std::string & model_name, const std::string & config_path)
 
 void EUCM::parse() {}
 void EUCM::initialize(
-  const Base::Params & intrinsic, const std::vector<Eigen::Vector3d> & point3d_vec,
+  const Base::Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
 {
   assert(point3d_vec.size() == point2d_vec.size());
 
   // set fx,fy,cx,cy
-  intrinsic_ = intrinsic;
+  common_params_ = common_params;
 
   // set beta
   distortion_.beta = 1.0;
@@ -35,8 +35,8 @@ void EUCM::initialize(
   const double v = point2d_mid.y();
 
   const double d = std::sqrt((X * X) + (Y * Y) + (Z * Z));
-  const double pc = u - intrinsic_.cx;
-  distortion_.alpha = ((intrinsic_.fx * X) - (pc * Z)) / (pc * (d - Z));
+  const double pc = u - common_params_.cx;
+  distortion_.alpha = ((common_params_.fx * X) - (pc * Z)) / (pc * (d - Z));
 }
 
 Eigen::Vector2d EUCM::project(const Eigen::Vector3d & point3d) const
@@ -62,18 +62,18 @@ Eigen::Vector2d EUCM::project(const Eigen::Vector3d & point3d) const
   // }
 
   Eigen::Vector2d point2d;
-  point2d.x() = intrinsic_.fx * (X / denom) + intrinsic_.cx;
-  point2d.y() = intrinsic_.fy * (Y / denom) + intrinsic_.cy;
+  point2d.x() = common_params_.fx * (X / denom) + common_params_.cx;
+  point2d.y() = common_params_.fy * (Y / denom) + common_params_.cy;
 
   return point2d;
 }
 
 Eigen::Vector3d EUCM::unproject(const Eigen::Vector2d & point2d) const
 {
-  const double fx = intrinsic_.fx;
-  const double fy = intrinsic_.fy;
-  const double cx = intrinsic_.cx;
-  const double cy = intrinsic_.cy;
+  const double fx = common_params_.fx;
+  const double fy = common_params_.fy;
+  const double cx = common_params_.cx;
+  const double cy = common_params_.cy;
   const double alpha = distortion_.alpha;
   const double beta = distortion_.beta;
   const double u = point2d.x();
@@ -103,8 +103,8 @@ Eigen::Vector3d EUCM::unproject(const Eigen::Vector2d & point2d) const
 
 void EUCM::optimize()
 {
-  double parameters[6] = {intrinsic_.fx, intrinsic_.fy,     intrinsic_.cx,
-                          intrinsic_.cy, distortion_.alpha, distortion_.beta};
+  double parameters[6] = {common_params_.fx, common_params_.fy, common_params_.cx,
+                          common_params_.cy, distortion_.alpha, distortion_.beta};
 
   double gt_u = 0.5;
   double gt_v = 0.5;

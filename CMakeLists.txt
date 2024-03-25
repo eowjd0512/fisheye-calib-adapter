@@ -16,6 +16,7 @@ set(SOURCE_FILES
         src/adapter.cpp
         src/utils.cpp
         src/model/EUCM.cpp
+        src/model/KB8.cpp
         src/model/OcamLib.cpp
         )
 add_library(${PACKAGE_NAME}

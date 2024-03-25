@@ -18,6 +18,8 @@ class Base
 public:
   struct Params
   {
+    int32_t width;
+    int32_t height;
     double fx;
     double fy;
     double cx;
@@ -33,18 +35,18 @@ public:
 
   virtual void parse() = 0;
   virtual void initialize(
-    const Params & intrinsic, const std::vector<Eigen::Vector3d> & point3d_vec,
+    const Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
     const std::vector<Eigen::Vector2d> & point2d_vec) = 0;
   virtual Eigen::Vector2d project(const Eigen::Vector3d & point3d) const = 0;
   virtual Eigen::Vector3d unproject(const Eigen::Vector2d & point2d) const = 0;
   virtual void optimize() = 0;
   virtual void print() const = 0;
-  const Params & get_intrinsic_params() const { return intrinsic_; };
+  const Params & get_common_params() const { return common_params_; };
 
 protected:
   std::string model_name_;
   std::string config_path_;
-  Params intrinsic_;
+  Params common_params_;
 };
 }  // namespace model
 using FisheyeCameraModel = model::Base;

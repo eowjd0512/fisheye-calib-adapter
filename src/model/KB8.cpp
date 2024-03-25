@@ -13,13 +13,13 @@ KB8::KB8(const std::string & model_name, const std::string & config_path)
 void KB8::parse() {}
 
 void KB8::initialize(
-  const Base::Params & intrinsic, const std::vector<Eigen::Vector3d> & point3d_vec,
+  const Base::Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
 {
   assert(point3d_vec.size() == point2d_vec.size());
 
   // set fx,fy,cx,cy
-  intrinsic_ = intrinsic;
+  common_params_ = common_params;
 
   // set k1, k2, k3, k4
   Eigen::MatrixXd A(point3d_vec.size(), 4);
@@ -45,7 +45,7 @@ void KB8::initialize(
     A(i, 1) = theta5;
     A(i, 2) = theta7;
     A(i, 3) = theta9;
-    b[i] = (u - intrinsic_.cx) * (r / (intrinsic_.fx * X)) - theta;
+    b[i] = (u - common_params_.cx) * (r / (common_params_.fx * X)) - theta;
   }
 
   const Eigen::VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
@@ -71,8 +71,8 @@ Eigen::Vector2d KB8::project(const Eigen::Vector3d & point3d) const
                          (distortion_.k3 * theta7) + (distortion_.k4 * theta9);
 
   Eigen::Vector2d point2d;
-  point2d.x() = intrinsic_.fx * d_theta * (X / r) + intrinsic_.cx;
-  point2d.y() = intrinsic_.fy * d_theta * (Y / r) + intrinsic_.cy;
+  point2d.x() = common_params_.fx * d_theta * (X / r) + common_params_.cx;
+  point2d.y() = common_params_.fy * d_theta * (Y / r) + common_params_.cy;
 
   return point2d;
 }
@@ -82,8 +82,8 @@ Eigen::Vector3d KB8::unproject(const Eigen::Vector2d & point2d) const
   const double u = point2d.x();
   const double v = point2d.y();
 
-  const double mx = (u - intrinsic_.cx) / intrinsic_.fx;
-  const double my = (v - intrinsic_.cy) / intrinsic_.fy;
+  const double mx = (u - common_params_.cx) / common_params_.fx;
+  const double my = (v - common_params_.cy) / common_params_.fy;
 
   double ru = std::sqrt(mx * mx + my * my);
   ru = std::min(std::max(-M_PI / 2.0, ru), M_PI / 2.0);
@@ -110,16 +110,17 @@ Eigen::Vector3d KB8::unproject(const Eigen::Vector2d & point2d) const
         break;
       }
     }
-
-    Eigen::Vector3d point3d;
-    point3d.x() = sin(theta) * (mx / ru);
-    point3d.y() = sin(theta) * (my / ru);
-    point3d.z() = cos(theta);
-
-    return point3d;
   }
+  Eigen::Vector3d point3d;
+  point3d.x() = sin(theta) * (mx / ru);
+  point3d.y() = sin(theta) * (my / ru);
+  point3d.z() = cos(theta);
 
-  void KB8::optimize() {}
-  void KB8::print() const {}
+  return point3d;
+}
+
+void KB8::optimize() {}
+void KB8::print() const {}
+
 }  // namespace model
 }  // namespace FCA

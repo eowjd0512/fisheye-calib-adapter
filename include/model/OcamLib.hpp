@@ -25,7 +25,7 @@ public:
 
   void parse() override;
   void initialize(
-    const Base::Params & intrinsic, const std::vector<Eigen::Vector3d> & point3d_vec,
+    const Base::Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
     const std::vector<Eigen::Vector2d> & point2d_vec) override;
   Eigen::Vector2d project(const Eigen::Vector3d & point3d) const override;
   Eigen::Vector3d unproject(const Eigen::Vector2d & point2d) const override;
