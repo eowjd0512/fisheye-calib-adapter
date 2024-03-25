@@ -101,9 +101,51 @@ Eigen::Vector3d EUCM::unproject(const Eigen::Vector2d & point2d) const
   return point3d;
 }
 
-Eigen::MatrixXd EUCM::calculate_jacobian() const {}
+void EUCM::optimize()
+{
+  double parameters[6] = {intrinsic_.fx, intrinsic_.fy,     intrinsic_.cx,
+                          intrinsic_.cy, distortion_.alpha, distortion_.beta};
 
-void EUCM::optimize() {}
+  double gt_u = 0.5;
+  double gt_v = 0.5;
+  double obs_x = 0.5;
+  double obs_y = 0.5;
+  double obs_z = 0.5;
+  ceres::Problem problem;
+  EUCMAnalyticCostFunction * cost_function =
+    new EUCMAnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
+  problem.AddResidualBlock(cost_function, nullptr, parameters);
+
+  //// Auto diff
+  // problem.AddResidualBlock(
+  //     new ceres::AutoDiffCostFunction<EUCMAutoDiffCostFunctor, 2, 6>(
+  //         new EUCMAutoDiffCostFunctor(observed_x, observed_y)),
+  //     nullptr, parameters);
+
+  //// set parameters range
+  // problem.SetParameterLowerBound(parameters, 0, 0.1); // fx > 0.1
+  //   problem.SetParameterLowerBound(parameters, 1, 0.1); // fy > 0.1
+  //   problem.SetParameterLowerBound(parameters, 4, 0.0); // alpha >= 0
+  //   problem.SetParameterUpperBound(parameters, 4, 1.0); // alpha <= 1
+  //   problem.SetParameterLowerBound(parameters, 5, 0.0); // beta >= 0
+  //   problem.SetParameterUpperBound(parameters, 5, 1.0); // beta <= 1
+
+  ceres::Solver::Options options;
+  options.linear_solver_type = ceres::DENSE_QR;
+  options.minimizer_progress_to_stdout = true;
+
+  ceres::Solver::Summary summary;
+  ceres::Solve(options, &problem, &summary);
+
+  std::cout << summary.FullReport() << "\n";
+  std::cout << "Final parameters: "
+            << "fx=" << parameters[0] << ", "
+            << "fy=" << parameters[1] << ", "
+            << "cx=" << parameters[2] << ", "
+            << "cy=" << parameters[3] << ", "
+            << "alpha=" << parameters[4] << ", "
+            << "beta=" << parameters[5] << std::endl;
+}
 
 void EUCM::print() const {}
 

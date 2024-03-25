@@ -119,10 +119,6 @@ Eigen::Vector3d KB8::unproject(const Eigen::Vector2d & point2d) const
     return point3d;
   }
 
-  Eigen::MatrixXd KB8::calculate_jacobian() const
-  {
-    //du/drho * drho/d[k1,k2,k3,k4] = [fx 0;0 fy] * [theta^3 * x/r] /  [theta^5 * x/r] / [theta^7 * x/r] / [theta^9 * x/r]
-  }
   void KB8::optimize() {}
   void KB8::print() const {}
 }  // namespace model

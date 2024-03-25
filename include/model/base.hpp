@@ -1,9 +1,10 @@
 #ifndef MODEL__BASE_HPP_
 #define MODEL__BASE_HPP_
 
+#include <ceres/ceres.h>
 #include <yaml-cpp/yaml.h>
 
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -36,7 +37,6 @@ public:
     const std::vector<Eigen::Vector2d> & point2d_vec) = 0;
   virtual Eigen::Vector2d project(const Eigen::Vector3d & point3d) const = 0;
   virtual Eigen::Vector3d unproject(const Eigen::Vector2d & point2d) const = 0;
-  virtual Eigen::MatrixXd calculate_jacobian() const = 0;
   virtual void optimize() = 0;
   virtual void print() const = 0;
   const Params & get_intrinsic_params() const { return intrinsic_; };

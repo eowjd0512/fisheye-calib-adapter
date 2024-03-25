@@ -190,8 +190,6 @@ Eigen::Vector3d OcamLib::unproject(const Eigen::Vector2d & point2d) const
   return point3d;
 }
 
-Eigen::MatrixXd OcamLib::calculate_jacobian() const {}
-
 void OcamLib::optimize() {}
 
 void OcamLib::print() const {}

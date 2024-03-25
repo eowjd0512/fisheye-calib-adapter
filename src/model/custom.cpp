@@ -22,7 +22,6 @@ Eigen::Vector3d Custom::unproject(const Eigen::Vector2d & point2d) const
 {
   return Eigen::Vector3d();
 }
-Eigen::MatrixXd Custom::calculate_jacobian() const {}
 void Custom::optimize() {}
 void Custom::print() const {}
 }  // namespace model

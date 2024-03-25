@@ -2,15 +2,15 @@ cmake_minimum_required(VERSION 3.10)
 set(PACKAGE_NAME fisheye-calib-adapter)
 project(${PACKAGE_NAME})
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(Eigen3 3.3 REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
 
 set(SOURCE_FILES
         src/adapter.cpp
@@ -27,10 +27,10 @@ add_definitions(-DPROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 add_executable(main example/main.cpp)
 
 target_link_libraries(main
+    ${PACKAGE_NAME}
     Eigen3::Eigen
     ${CERES_LIBRARIES}
     ${OpenCV_LIBS}
-    ${PACKAGE_NAME}
     ${YAML_CPP_LIBRARIES}
 )
 
