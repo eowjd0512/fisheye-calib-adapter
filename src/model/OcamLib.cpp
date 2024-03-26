@@ -22,8 +22,10 @@ void OcamLib::parse()
   common_params_.height = config["image"]["height"].as<int32_t>();
 
   // Read coefficients
-  distortion_.proj_coeffs = config["parameter"]["coefficients"]["projection"].as<std::vector<double>>();
-  distortion_.unproj_coeffs = config["parameter"]["coefficients"]["unprojection"].as<std::vector<double>>();
+  distortion_.proj_coeffs =
+    config["parameter"]["coefficients"]["projection"].as<std::vector<double>>();
+  distortion_.unproj_coeffs =
+    config["parameter"]["coefficients"]["unprojection"].as<std::vector<double>>();
 
   // Read parameters
   const std::vector<double> affine_parameters =
@@ -87,12 +89,12 @@ Eigen::Vector2d OcamLib::project(const Eigen::Vector3d & point3d) const
   const double r = std::sqrt((X * X) + (Y * Y));
   const double theta = atan(Z / r);
 
-  double rho = distortion_.unproj_coeffs.at(0);
+  double rho = distortion_.proj_coeffs.at(0);
   double theta_i = 1.0;
 
-  for (auto i = 1U; i < distortion_.unproj_coeffs.size(); ++i) {
+  for (auto i = 1U; i < distortion_.proj_coeffs.size(); ++i) {
     theta_i *= theta;
-    rho += theta_i * distortion_.unproj_coeffs.at(i);
+    rho += theta_i * distortion_.proj_coeffs.at(i);
   }
 
   const double u = (X / r) * rho;
@@ -175,11 +177,11 @@ Eigen::Vector3d OcamLib::unproject(const Eigen::Vector2d & point2d) const
   //distance [pixels] of  the point from the image center
   const double r = std::sqrt((px * px) + (py * py));
 
-  double pz = distortion_.proj_coeffs.at(0);
+  double pz = distortion_.unproj_coeffs.at(0);
   double r_i = 1.0;
-  for (auto i = 1U; i < distortion_.proj_coeffs.size(); ++i) {
+  for (auto i = 1U; i < distortion_.unproj_coeffs.size(); ++i) {
     r_i *= r;
-    pz += r_i * distortion_.proj_coeffs.at(i);
+    pz += r_i * distortion_.unproj_coeffs.at(i);
   }
 
   const double norm = std::sqrt((px * px) + (py * py) + (pz * pz));
@@ -192,7 +194,11 @@ Eigen::Vector3d OcamLib::unproject(const Eigen::Vector2d & point2d) const
   return point3d;
 }
 
-void OcamLib::optimize() {}
+void OcamLib::optimize(
+  const std::vector<Eigen::Vector3d> & point3d_vec,
+  const std::vector<Eigen::Vector2d> & point2d_vec)
+{
+}
 
 void OcamLib::print() const {}
 

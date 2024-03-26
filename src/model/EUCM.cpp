@@ -24,19 +24,34 @@ void EUCM::initialize(
   distortion_.beta = 1.0;
 
   // set alpha
-  const int32_t mid_index = point3d_vec.size() / 2;
-  const auto & point3d_mid = point3d_vec.at(mid_index);
-  const auto & point2d_mid = point2d_vec.at(mid_index);
+  Eigen::MatrixXd A(point3d_vec.size() * 2, 1);
+  Eigen::VectorXd b(point3d_vec.size() * 2, 1);
 
-  const double X = point3d_mid.x();
-  const double Y = point3d_mid.y();
-  const double Z = point3d_mid.z();
-  const double u = point2d_mid.x();
-  const double v = point2d_mid.y();
+  for (auto i = 0U; i < point3d_vec.size(); ++i) {
+    const auto & point3d = point3d_vec.at(i);
+    const auto & point2d = point2d_vec.at(i);
+    const double X = point3d.x();
+    const double Y = point3d.y();
+    const double Z = point3d.z();
+    const double u = point2d.x();
+    const double v = point2d.y();
 
-  const double d = std::sqrt((X * X) + (Y * Y) + (Z * Z));
-  const double pc = u - common_params_.cx;
-  distortion_.alpha = ((common_params_.fx * X) - (pc * Z)) / (pc * (d - Z));
+    const double d = std::sqrt((X * X) + (Y * Y) + (Z * Z));
+    const double u_cx = u - common_params_.cx;
+    const double v_cy = v - common_params_.cy;
+    // distortion_.alpha = ((common_params_.fx * X) - (u_cx * Z)) / (u_cx * (d - Z));
+
+    A(i * 2, 0) = u_cx * (d - Z);
+    A(i * 2 + 1, 0) = v_cy * (d - Z);
+
+    b[i * 2] = (common_params_.fx * X) - (u_cx * Z);
+    b[i * +1] = (common_params_.fy * Y) - (v_cy * Z);
+  }
+
+  const Eigen::VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+  distortion_.alpha = x[0];
+
+  std::cout << "initialized alpha: " << distortion_.alpha << std::endl;
 }
 
 Eigen::Vector2d EUCM::project(const Eigen::Vector3d & point3d) const
@@ -101,35 +116,50 @@ Eigen::Vector3d EUCM::unproject(const Eigen::Vector2d & point2d) const
   return point3d;
 }
 
-void EUCM::optimize()
+void EUCM::optimize(
+  const std::vector<Eigen::Vector3d> & point3d_vec,
+  const std::vector<Eigen::Vector2d> & point2d_vec)
 {
   double parameters[6] = {common_params_.fx, common_params_.fy, common_params_.cx,
                           common_params_.cy, distortion_.alpha, distortion_.beta};
 
-  double gt_u = 0.5;
-  double gt_v = 0.5;
-  double obs_x = 0.5;
-  double obs_y = 0.5;
-  double obs_z = 0.5;
   ceres::Problem problem;
-  EUCMAnalyticCostFunction * cost_function =
-    new EUCMAnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
-  problem.AddResidualBlock(cost_function, nullptr, parameters);
 
-  //// Auto diff
-  // problem.AddResidualBlock(
-  //     new ceres::AutoDiffCostFunction<EUCMAutoDiffCostFunctor, 2, 6>(
-  //         new EUCMAutoDiffCostFunctor(observed_x, observed_y)),
-  //     nullptr, parameters);
+  const auto num_pairs = point3d_vec.size();
+  for (auto i = 0U; i < num_pairs; ++i) {
+    const auto & point2d = point2d_vec.at(i);
+    const auto & point3d = point3d_vec.at(i);
+    const double gt_u = point2d.x();
+    const double gt_v = point2d.y();
+    const double obs_x = point3d.x();
+    const double obs_y = point3d.y();
+    const double obs_z = point3d.z();
 
-  //// set parameters range
-  // problem.SetParameterLowerBound(parameters, 0, 0.1); // fx > 0.1
-  //   problem.SetParameterLowerBound(parameters, 1, 0.1); // fy > 0.1
-  //   problem.SetParameterLowerBound(parameters, 4, 0.0); // alpha >= 0
-  //   problem.SetParameterUpperBound(parameters, 4, 1.0); // alpha <= 1
-  //   problem.SetParameterLowerBound(parameters, 5, 0.0); // beta >= 0
-  //   problem.SetParameterUpperBound(parameters, 5, 1.0); // beta <= 1
+    EUCMAnalyticCostFunction * cost_function =
+      new EUCMAnalyticCostFunction(gt_u, gt_v, 18 * obs_x, 18 * obs_y, 18 * obs_z);
+    problem.AddResidualBlock(cost_function, nullptr, parameters);
+    // double * res = new double[2];
+    // double ** jaco = new double *[1];
+    // jaco[0] = new double[2 * 6];
+    // double ** params = new double *[1];
+    // params[0] = parameters;
+    // cost_function->Evaluate(params, res, jaco);
 
+    // Auto diff
+    // problem.AddResidualBlock(
+    //   new ceres::AutoDiffCostFunction<EUCMAutoDiffCostFunctor, 2, 6>(
+    //     new EUCMAutoDiffCostFunctor(gt_u, gt_v, obs_x, obs_y, obs_z)),
+    //   nullptr, parameters);
+
+    // set parameters range
+    problem.SetParameterLowerBound(parameters, 0, 0.1);  // fx > 0.1
+    problem.SetParameterLowerBound(parameters, 1, 0.1);  // fy > 0.1
+    problem.SetParameterLowerBound(parameters, 2, 0.1);  // cx > 0.1
+    problem.SetParameterLowerBound(parameters, 3, 0.1);  // cy > 0.1
+    problem.SetParameterLowerBound(parameters, 4, 0.0);  // alpha >= 0
+    problem.SetParameterUpperBound(parameters, 4, 1.0);  // alpha <= 1
+    problem.SetParameterLowerBound(parameters, 5, 0.1);  // beta >= 0
+  }
   ceres::Solver::Options options;
   options.linear_solver_type = ceres::DENSE_QR;
   options.minimizer_progress_to_stdout = true;

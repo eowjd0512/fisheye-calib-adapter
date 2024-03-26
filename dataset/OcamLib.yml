@@ -1,11 +1,14 @@
 image:
-  width: 640
+  width: 754
   height: 480
 
 parameter:
-  affine: [1.1, 2.2, 3.3] # [c, d, e]
-  cx: 60
-  cy: 50
+  # [c, d, e]
+  affine: [0.999626131079017, -0.0034775192597376, 0.00385134991673147]
+  cx: 392.219508388648
+  cy: 243.494438476351
   coefficients:
-    projection: [1, 2, 3, 4, 5] # Coefficients for projection from 3D to 2D
-    unprojection: [6, 7, 8, 9, 10, 11] # Coefficients for unprojection from 2D to 3D
+    # Coefficients for projection from 3D to 2D
+    projection: [293.667187375663, 149.982043337335, -10.448650568161, 28.2295300683376, 7.13365723186292, 0.056303218962532, 10.4144677485333, 0.166354960773665, -5.86858687381081, 1.18165998645705, 3.1108311354746, 0.810799620714366]
+    # Coefficients for unprojection from 2D to 3D
+    unprojection: [-209.200757992065, 0.0, 0.00213741670953883, -4.2203617319086e-06, 1.77146086919594e-08]

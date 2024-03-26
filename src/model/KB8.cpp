@@ -119,7 +119,11 @@ Eigen::Vector3d KB8::unproject(const Eigen::Vector2d & point2d) const
   return point3d;
 }
 
-void KB8::optimize() {}
+void KB8::optimize(
+  const std::vector<Eigen::Vector3d> & point3d_vec,
+  const std::vector<Eigen::Vector2d> & point2d_vec)
+{
+}
 void KB8::print() const {}
 
 }  // namespace model

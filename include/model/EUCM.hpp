@@ -26,7 +26,9 @@ public:
     const std::vector<Eigen::Vector2d> & point2d_vec) override;
   Eigen::Vector2d project(const Eigen::Vector3d & point3d) const override;
   Eigen::Vector3d unproject(const Eigen::Vector2d & point2d) const override;
-  void optimize() override;
+  void optimize(
+    const std::vector<Eigen::Vector3d> & point3d_vec,
+    const std::vector<Eigen::Vector2d> & point2d_vec) override;
   void print() const override;
 
 private:
@@ -58,6 +60,11 @@ public:
     const double r_squared = obs_x_ * obs_x_ + obs_y_ * obs_y_;
     const double d = std::sqrt(beta * (r_squared) + obs_z_ * obs_z_);
     const double denom = alpha * d + (1.0 - alpha) * obs_z_;
+
+    constexpr double PRECISION = 1e-3;
+    if (denom < PRECISION) {
+      return false;
+    }
 
     residuals[0] = fx * obs_x_ - u_cx * denom;
     residuals[1] = fy * obs_y_ - v_cy * denom;
@@ -103,7 +110,7 @@ struct EUCMAutoDiffCostFunctor
     const double r_squared = obs_x_ * obs_x_ + obs_y_ * obs_y_;
     T u_cx = gt_u_ - cx;
     T v_cy = gt_v_ - cy;
-    T d = std::sqrt(beta * T(r_squared) + T(obs_z_) * T(obs_z_));
+    T d = ceres::sqrt(beta * T(r_squared) + T(obs_z_) * T(obs_z_));
     T denom = alpha * d + (1.0 - alpha) * T(obs_z_);
 
     residuals[0] = fx * T(obs_x_) - u_cx * denom;

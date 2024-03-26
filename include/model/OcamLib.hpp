@@ -29,7 +29,9 @@ public:
     const std::vector<Eigen::Vector2d> & point2d_vec) override;
   Eigen::Vector2d project(const Eigen::Vector3d & point3d) const override;
   Eigen::Vector3d unproject(const Eigen::Vector2d & point2d) const override;
-  void optimize() override;
+  void optimize(
+    const std::vector<Eigen::Vector3d> & point3d_vec,
+    const std::vector<Eigen::Vector2d> & point2d_vec) override;
   void print() const override;
 
   void estimate_projection_coefficients(

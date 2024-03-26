@@ -19,6 +19,8 @@ public:
   void compare_image(const std::string & image_path, bool show = false);
 
 private:
+  std::vector<Eigen::Vector2d> sample_points(int32_t width,int32_t height, int n);
+
   const FCA::FisheyeCameraModel * const input_model_;
   FCA::FisheyeCameraModel * const output_model_;
 };
