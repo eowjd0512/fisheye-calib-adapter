@@ -13,42 +13,40 @@ void Adapter::adapt()
 {
   const auto & common_params = input_model_->get_common_params();
   // Sample points
-  constexpr auto NUM_SAMPLE_POINTS = 10000;
+  constexpr auto NUM_SAMPLE_POINTS = 100000;
   const std::vector<Eigen::Vector2d> sampled_point2d_vec =
     this->sample_points(common_params.width, common_params.height, NUM_SAMPLE_POINTS);
 
   // Unproject samples from input model and associate <3D, 2D>
-  std::vector<Eigen::Vector2d> point2d_vec;
-  std::vector<Eigen::Vector3d> point3d_vec;
-  point2d_vec.reserve(NUM_SAMPLE_POINTS);
-  point3d_vec.reserve(NUM_SAMPLE_POINTS);
+  point2d_vec_.reserve(NUM_SAMPLE_POINTS);
+  point3d_vec_.reserve(NUM_SAMPLE_POINTS);
   for (const auto & point2d : sampled_point2d_vec) {
     const Eigen::Vector3d point3d = input_model_->unproject(point2d);
     if (point3d.z() > 0) {
-      point2d_vec.emplace_back(point2d);
-      point3d_vec.emplace_back(point3d);
+      point2d_vec_.emplace_back(point2d);
+      point3d_vec_.emplace_back(point3d);
     }
   }
 
   // Initialize output model
-  output_model_->initialize(common_params, point3d_vec, point2d_vec);
+  output_model_->initialize(common_params, point3d_vec_, point2d_vec_);
 
   // Optimize output model
-  output_model_->optimize(point3d_vec, point2d_vec);
+  output_model_->optimize(point3d_vec_, point2d_vec_);
 
-  //TODO: draw sample points in input model
+  output_model_->print();
+}
 
-  // TODO: draw projected points output model
-
+void Adapter::evaluate()
+{
   double error = 0.0;
-  for (auto i = 0U; i < point3d_vec.size(); ++i) {
-    const auto & point3d = point3d_vec.at(i);
-    const auto & point2d = point2d_vec.at(i);
+  for (auto i = 0U; i < point3d_vec_.size(); ++i) {
+    const auto & point3d = point3d_vec_.at(i);
+    const auto & point2d = point2d_vec_.at(i);
     const Eigen::Vector2d projected_point2d = input_model_->project(point3d);
-    // std::cout << point2d.transpose() << " " << projected_point2d.transpose() << std::endl;
     error += (point2d - projected_point2d).norm();
   }
-  std::cout << error / point3d_vec.size() << std::endl;
+  std::cout << "error: " << error / point3d_vec_.size() << std::endl;
 }
 
 void Adapter::compare_image(const std::string & image_path, bool show)

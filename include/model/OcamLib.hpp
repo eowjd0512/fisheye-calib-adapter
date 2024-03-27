@@ -33,13 +33,13 @@ public:
     const std::vector<Eigen::Vector3d> & point3d_vec,
     const std::vector<Eigen::Vector2d> & point2d_vec) override;
   void print() const override;
+  void save_result(const std::string& result_path) const override;
 
   void estimate_projection_coefficients(
     const std::vector<Eigen::Vector3d> & point3d_vec,
     const std::vector<Eigen::Vector2d> & point2d_vec);
 
-  // TODO: define distances for evaluation
-  double evaluate(
+  double calculate_average_error(
     const std::vector<Eigen::Vector3d> & point3d_vec,
     const std::vector<Eigen::Vector2d> & point2d_vec);
 
@@ -47,15 +47,15 @@ private:
   Params distortion_;
 };
 
-class OCamLibAnalyticCostFunction : public ceres::SizedCostFunction<2, 10>
+class OcamLibAnalyticCostFunction : public ceres::SizedCostFunction<2, 10>
 {
 public:
-  OCamLibAnalyticCostFunction(double gt_u, double gt_v, double obs_x, double obs_y, double obs_z)
+  OcamLibAnalyticCostFunction(double gt_u, double gt_v, double obs_x, double obs_y, double obs_z)
   : gt_u_(gt_u), gt_v_(gt_v), obs_x_(obs_x), obs_y_(obs_y), obs_z_(obs_z)
   {
   }
 
-  virtual ~OCamLibAnalyticCostFunction() {}
+  virtual ~OcamLibAnalyticCostFunction() {}
 
   virtual bool Evaluate(
     double const * const * parameters, double * residuals, double ** jacobians) const
@@ -94,7 +94,7 @@ public:
         // ∂residual_x / ∂c, ∂residual_y / ∂c
         jacobian_ocamlib.col(0) << -theta_px, -theta_py + v_cy;
         // ∂residual_x / ∂d, ∂residual_y / ∂d
-        jacobian_ocamlib.col(1) << -v_cy + e * theta_px, theta_py;
+        jacobian_ocamlib.col(1) << -v_cy + e * theta_px, e * theta_py;
         // ∂residual_x / ∂e, ∂residual_y / ∂e
         jacobian_ocamlib.col(2) << d * theta_px, d * theta_py - u_cx;
         jacobian_ocamlib.col(3) << -1.0, e;  // ∂residual_x / ∂cx, ∂residual_y / ∂cx
@@ -116,9 +116,9 @@ private:
   const double gt_u_, gt_v_, obs_x_, obs_y_, obs_z_;
 };
 
-struct OCamLibAutoDiffCostFunctor
+struct OcamLibAutoDiffCostFunctor
 {
-  OCamLibAutoDiffCostFunctor(double gt_u, double gt_v, double obs_x, double obs_y, double obs_z)
+  OcamLibAutoDiffCostFunctor(double gt_u, double gt_v, double obs_x, double obs_y, double obs_z)
   : gt_u_(gt_u), gt_v_(gt_v), obs_x_(obs_x), obs_y_(obs_y), obs_z_(obs_z)
   {
   }
@@ -140,12 +140,12 @@ struct OCamLibAutoDiffCostFunctor
     T c_de = c - (d * e);
     T u_cx = T(gt_u_) - cx;
     T v_cy = T(gt_v_) - cy;
-    const double px = obs_x_ / obs_z_;
-    const double py = obs_y_ / obs_z_;
-    const double r = std::sqrt(px * px + py * py);
-    const double r2 = r * r;
-    const double r3 = r * r2;
-    const double r4 = r2 * r2;
+    T px = T(obs_x_) / T(obs_z_);
+    T py = T(obs_y_) / T(obs_z_);
+    T r = ceres::sqrt(px * px + py * py);
+    T r2 = r * r;
+    T r3 = r * r2;
+    T r4 = r2 * r2;
 
     T theta = k0 + k1 * r + k2 * r2 + k3 * r3 + k4 * r4;
 

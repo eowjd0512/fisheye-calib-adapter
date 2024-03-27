@@ -8,6 +8,7 @@ namespace model
 Custom::Custom(const std::string & model_name, const std::string & config_path)
 : Base(model_name, config_path)
 {
+  parse();
 }
 
 void Custom::parse() {}
@@ -28,5 +29,7 @@ void Custom::optimize(
 {
 }
 void Custom::print() const {}
+
+void Custom::save_result(const std::string& result_path) const {}
 }  // namespace model
 }  // namespace FCA

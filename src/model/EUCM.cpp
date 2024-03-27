@@ -8,9 +8,26 @@ namespace model
 EUCM::EUCM(const std::string & model_name, const std::string & config_path)
 : Base(model_name, config_path)
 {
+  parse();
 }
 
-void EUCM::parse() {}
+void EUCM::parse()
+{
+  // Load the YAML file
+  const YAML::Node config = YAML::LoadFile(config_path_ + "/" + model_name_ + ".yml");
+
+  common_params_.width = config["image"]["width"].as<int32_t>();
+  common_params_.height = config["image"]["height"].as<int32_t>();
+
+  // Read parameters
+  common_params_.cx = config["parameter"]["cx"].as<double>();
+  common_params_.cy = config["parameter"]["cy"].as<double>();
+  common_params_.fx = config["parameter"]["fx"].as<double>();
+  common_params_.fy = config["parameter"]["fy"].as<double>();
+  distortion_.alpha = config["parameter"]["alpha"].as<double>();
+  distortion_.beta = config["parameter"]["beta"].as<double>();
+}
+
 void EUCM::initialize(
   const Base::Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
@@ -136,26 +153,10 @@ void EUCM::optimize(
     const double obs_z = point3d.z();
 
     EUCMAnalyticCostFunction * cost_function =
-      new EUCMAnalyticCostFunction(gt_u, gt_v, 18 * obs_x, 18 * obs_y, 18 * obs_z);
+      new EUCMAnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
     problem.AddResidualBlock(cost_function, nullptr, parameters);
-    // double * res = new double[2];
-    // double ** jaco = new double *[1];
-    // jaco[0] = new double[2 * 6];
-    // double ** params = new double *[1];
-    // params[0] = parameters;
-    // cost_function->Evaluate(params, res, jaco);
-
-    // Auto diff
-    // problem.AddResidualBlock(
-    //   new ceres::AutoDiffCostFunction<EUCMAutoDiffCostFunctor, 2, 6>(
-    //     new EUCMAutoDiffCostFunctor(gt_u, gt_v, obs_x, obs_y, obs_z)),
-    //   nullptr, parameters);
 
     // set parameters range
-    problem.SetParameterLowerBound(parameters, 0, 0.1);  // fx > 0.1
-    problem.SetParameterLowerBound(parameters, 1, 0.1);  // fy > 0.1
-    problem.SetParameterLowerBound(parameters, 2, 0.1);  // cx > 0.1
-    problem.SetParameterLowerBound(parameters, 3, 0.1);  // cy > 0.1
     problem.SetParameterLowerBound(parameters, 4, 0.0);  // alpha >= 0
     problem.SetParameterUpperBound(parameters, 4, 1.0);  // alpha <= 1
     problem.SetParameterLowerBound(parameters, 5, 0.1);  // beta >= 0
@@ -167,17 +168,53 @@ void EUCM::optimize(
   ceres::Solver::Summary summary;
   ceres::Solve(options, &problem, &summary);
 
-  std::cout << summary.FullReport() << "\n";
-  std::cout << "Final parameters: "
-            << "fx=" << parameters[0] << ", "
-            << "fy=" << parameters[1] << ", "
-            << "cx=" << parameters[2] << ", "
-            << "cy=" << parameters[3] << ", "
-            << "alpha=" << parameters[4] << ", "
-            << "beta=" << parameters[5] << std::endl;
+  std::cout << summary.FullReport() << std::endl;
+
+  common_params_.fx = parameters[0];
+  common_params_.fy = parameters[1];
+  common_params_.cx = parameters[2];
+  common_params_.cy = parameters[3];
+  distortion_.alpha = parameters[4];
+  distortion_.beta = parameters[5];
 }
 
-void EUCM::print() const {}
+void EUCM::print() const
+{
+  std::cout << "Final parameters: "
+            << "fx=" << common_params_.fx << ", "
+            << "fy=" << common_params_.fy << ", "
+            << "cx=" << common_params_.cx << ", "
+            << "cy=" << common_params_.cy << ", "
+            << "alpha=" << distortion_.alpha << ", "
+            << "beta=" << distortion_.beta << std::endl;
+}
 
+void EUCM::save_result(const std::string & result_path) const
+{
+  YAML::Emitter out;
+
+  out << YAML::BeginMap;
+  out << YAML::Key << "image" << YAML::Value;
+  out << YAML::BeginMap;
+  out << YAML::Key << "width" << YAML::Value << common_params_.width;
+  out << YAML::Key << "height" << YAML::Value << common_params_.height;
+  out << YAML::EndMap;
+
+  out << YAML::Key << "parameter" << YAML::Value;
+  out << YAML::BeginMap;
+  out << YAML::Key << "fx" << YAML::Value << common_params_.fx;
+  out << YAML::Key << "fy" << YAML::Value << common_params_.fy;
+  out << YAML::Key << "cx" << YAML::Value << common_params_.cx;
+  out << YAML::Key << "cy" << YAML::Value << common_params_.cy;
+  out << YAML::Key << "alpha" << YAML::Value << distortion_.alpha;
+  out << YAML::Key << "beta" << YAML::Value << distortion_.beta;
+  out << YAML::EndMap;
+
+  out << YAML::EndMap;
+
+  std::ofstream fout(result_path + "/" + model_name_ + ".yml");
+  fout << out.c_str();
+  fout << std::endl;
+}
 }  // namespace model
 }  // namespace FCA

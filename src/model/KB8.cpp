@@ -8,6 +8,7 @@ namespace model
 KB8::KB8(const std::string & model_name, const std::string & config_path)
 : Base(model_name, config_path)
 {
+  parse();
 }
 
 void KB8::parse() {}
@@ -22,8 +23,8 @@ void KB8::initialize(
   common_params_ = common_params;
 
   // set k1, k2, k3, k4
-  Eigen::MatrixXd A(point3d_vec.size(), 4);
-  Eigen::VectorXd b(point3d_vec.size(), 1);
+  Eigen::MatrixXd A(point3d_vec.size() * 2, 4);
+  Eigen::VectorXd b(point3d_vec.size() * 2, 1);
 
   for (auto i = 0U; i < point3d_vec.size(); ++i) {
     const auto & point3d = point3d_vec.at(i);
@@ -41,11 +42,16 @@ void KB8::initialize(
     const double theta7 = theta5 * theta2;
     const double theta9 = theta7 * theta2;
 
-    A(i, 0) = theta3;
-    A(i, 1) = theta5;
-    A(i, 2) = theta7;
-    A(i, 3) = theta9;
-    b[i] = (u - common_params_.cx) * (r / (common_params_.fx * X)) - theta;
+    A(i * 2, 0) = theta3;
+    A(i * 2, 1) = theta5;
+    A(i * 2, 2) = theta7;
+    A(i * 2, 3) = theta9;
+    A(i * 2 + 1, 0) = theta3;
+    A(i * 2 + 1, 1) = theta5;
+    A(i * 2 + 1, 2) = theta7;
+    A(i * 2 + 1, 3) = theta9;
+    b[i * 2] = (u - common_params_.cx) * (r / (common_params_.fx * X)) - theta;
+    b[i * 2 + 1] = (v - common_params_.cy) * (r / (common_params_.fy * Y)) - theta;
   }
 
   const Eigen::VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
@@ -123,8 +129,86 @@ void KB8::optimize(
   const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
 {
-}
-void KB8::print() const {}
+  double parameters[8] = {common_params_.fx, common_params_.fy, common_params_.cx,
+                          common_params_.cy, distortion_.k1,    distortion_.k2,
+                          distortion_.k3,    distortion_.k4};
 
+  ceres::Problem problem;
+
+  const auto num_pairs = point3d_vec.size();
+  for (auto i = 0U; i < num_pairs; ++i) {
+    const auto & point2d = point2d_vec.at(i);
+    const auto & point3d = point3d_vec.at(i);
+    const double gt_u = point2d.x();
+    const double gt_v = point2d.y();
+    const double obs_x = point3d.x();
+    const double obs_y = point3d.y();
+    const double obs_z = point3d.z();
+
+    KB8AnalyticCostFunction * cost_function =
+      new KB8AnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
+    problem.AddResidualBlock(cost_function, nullptr, parameters);
+  }
+  ceres::Solver::Options options;
+  options.linear_solver_type = ceres::DENSE_QR;
+  options.minimizer_progress_to_stdout = true;
+
+  ceres::Solver::Summary summary;
+  ceres::Solve(options, &problem, &summary);
+
+  std::cout << summary.FullReport() << std::endl;
+
+  common_params_.fx = parameters[0];
+  common_params_.fy = parameters[1];
+  common_params_.cx = parameters[2];
+  common_params_.cy = parameters[3];
+  distortion_.k1 = parameters[4];
+  distortion_.k2 = parameters[5];
+  distortion_.k3 = parameters[6];
+  distortion_.k4 = parameters[7];
+}
+
+void KB8::print() const
+{
+  std::cout << "Final parameters: "
+            << "fx=" << common_params_.fx << ", "
+            << "fy=" << common_params_.fy << ", "
+            << "cx=" << common_params_.cx << ", "
+            << "cy=" << common_params_.cy << ", "
+            << "k1=" << distortion_.k1 << ", "
+            << "k2=" << distortion_.k2 << ", "
+            << "k3=" << distortion_.k3 << ", "
+            << "k4=" << distortion_.k4 << std::endl;
+}
+
+void KB8::save_result(const std::string & result_path) const
+{
+  YAML::Emitter out;
+
+  out << YAML::BeginMap;
+
+  out << YAML::Key << "image" << YAML::Value;
+  out << YAML::BeginMap;
+  out << YAML::Key << "width" << YAML::Value << common_params_.width;
+  out << YAML::Key << "height" << YAML::Value << common_params_.height;
+  out << YAML::EndMap;
+
+  out << YAML::Key << "parameter" << YAML::Value;
+  out << YAML::BeginMap;
+  out << YAML::Key << "fx" << YAML::Value << common_params_.fx;
+  out << YAML::Key << "fy" << YAML::Value << common_params_.fy;
+  out << YAML::Key << "cx" << YAML::Value << common_params_.cx;
+  out << YAML::Key << "cy" << YAML::Value << common_params_.cy;
+  out << YAML::Key << "coefficients" << YAML::Value;
+  out << YAML::Flow << YAML::BeginSeq << distortion_.k1 << distortion_.k2 << distortion_.k3
+      << distortion_.k4 << YAML::EndSeq;
+  out << YAML::EndMap;
+
+  out << YAML::EndMap;
+
+  std::ofstream fout(result_path + "/" + model_name_ + ".yml");
+  fout << out.c_str();
+  fout << std::endl;
+}
 }  // namespace model
 }  // namespace FCA

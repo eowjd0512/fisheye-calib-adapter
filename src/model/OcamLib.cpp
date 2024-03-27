@@ -28,11 +28,9 @@ void OcamLib::parse()
     config["parameter"]["coefficients"]["unprojection"].as<std::vector<double>>();
 
   // Read parameters
-  const std::vector<double> affine_parameters =
-    config["parameter"]["affine"].as<std::vector<double>>();
-  distortion_.c = affine_parameters[0];
-  distortion_.d = affine_parameters[1];
-  distortion_.e = affine_parameters[2];
+  distortion_.c = config["parameter"]["c"].as<double>();
+  distortion_.d = config["parameter"]["d"].as<double>();
+  distortion_.e = config["parameter"]["e"].as<double>();
   common_params_.fx = common_params_.fy = distortion_.proj_coeffs.at(0);  // approximation
   common_params_.cx = config["parameter"]["cx"].as<double>();
   common_params_.cy = config["parameter"]["cy"].as<double>();
@@ -53,8 +51,8 @@ void OcamLib::initialize(
   distortion_.e = 0.0;
 
   // set polynomial coefficients for unprojection
-  Eigen::MatrixXd A(point3d_vec.size(), 5);
-  Eigen::VectorXd b(point3d_vec.size(), 1);
+  Eigen::MatrixXd A(point3d_vec.size() * 2, 5);
+  Eigen::VectorXd b(point3d_vec.size() * 2, 1);
 
   for (auto i = 0U; i < point3d_vec.size(); ++i) {
     const auto & point3d = point3d_vec.at(i);
@@ -69,12 +67,18 @@ void OcamLib::initialize(
     const double r3 = r * r2;
     const double r4 = r2 * r2;
 
-    A(i, 0) = 1;
-    A(i, 1) = r;
-    A(i, 2) = r2;
-    A(i, 3) = r3;
-    A(i, 4) = r4;
-    b[i] = (u - common_params_.cx) * (Z / X);
+    A(2 * i, 0) = 1;
+    A(2 * i, 1) = r;
+    A(2 * i, 2) = r2;
+    A(2 * i, 3) = r3;
+    A(2 * i, 4) = r4;
+    A(2 * i + 1, 0) = 1;
+    A(2 * i + 1, 1) = r;
+    A(2 * i + 1, 2) = r2;
+    A(2 * i + 1, 3) = r3;
+    A(2 * i + 1, 4) = r4;
+    b[2 * i] = (u - common_params_.cx) * (Z / X);
+    b[2 * i + 1] = (v - common_params_.cy) * (Z / Y);
   }
 
   const Eigen::VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
@@ -152,7 +156,7 @@ void OcamLib::estimate_projection_coefficients(
     distortion_.proj_coeffs.clear();
     distortion_.proj_coeffs = std::vector<double>(x.data(), x.data() + x.size());
 
-    const double error = evaluate(point3d_vec, point2d_vec);
+    const double error = calculate_average_error(point3d_vec, point2d_vec);
     if (error < max_error) {
       max_error = error;
       coefficient_candidates.insert(std::make_pair(n, distortion_.proj_coeffs));
@@ -198,11 +202,134 @@ void OcamLib::optimize(
   const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
 {
+  double parameters[10] = {
+    distortion_.c,
+    distortion_.d,
+    distortion_.e,
+    common_params_.cx,
+    common_params_.cy,
+    distortion_.unproj_coeffs[0],
+    distortion_.unproj_coeffs[1],
+    distortion_.unproj_coeffs[2],
+    distortion_.unproj_coeffs[3],
+    distortion_.unproj_coeffs[4]};
+
+  std::cout << "Before optimizing parameters: "
+            << "c=" << parameters[0] << ", "
+            << "d=" << parameters[1] << ", "
+            << "e=" << parameters[2] << ", "
+            << "cx=" << parameters[3] << ", "
+            << "cy=" << parameters[4] << ", "
+            << "k0=" << parameters[5] << ", "
+            << "k1=" << parameters[6] << ", "
+            << "k2=" << parameters[7] << ", "
+            << "k3=" << parameters[8] << ", "
+            << "k4=" << parameters[9] << std::endl;
+
+  ceres::Problem problem;
+
+  const auto num_pairs = point3d_vec.size();
+  for (auto i = 0U; i < num_pairs; ++i) {
+    const auto & point2d = point2d_vec.at(i);
+    const auto & point3d = point3d_vec.at(i);
+    const double gt_u = point2d.x();
+    const double gt_v = point2d.y();
+    const double obs_x = point3d.x();
+    const double obs_y = point3d.y();
+    const double obs_z = point3d.z();
+
+    OcamLibAnalyticCostFunction * cost_function =
+      new OcamLibAnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
+    problem.AddResidualBlock(cost_function, nullptr, parameters);
+  }
+  ceres::Solver::Options options;
+  options.linear_solver_type = ceres::DENSE_QR;
+  options.minimizer_progress_to_stdout = true;
+
+  ceres::Solver::Summary summary;
+  ceres::Solve(options, &problem, &summary);
+
+  std::cout << summary.FullReport() << std::endl;
+
+  distortion_.c = parameters[0];
+  distortion_.d = parameters[1];
+  distortion_.e = parameters[2];
+  common_params_.cx = parameters[3];
+  common_params_.cx = parameters[4];
+  distortion_.unproj_coeffs[0] = parameters[5];
+  distortion_.unproj_coeffs[1] = parameters[6];
+  distortion_.unproj_coeffs[2] = parameters[7];
+  distortion_.unproj_coeffs[3] = parameters[8];
+  distortion_.unproj_coeffs[4] = parameters[9];
+
+  estimate_projection_coefficients(point3d_vec, point2d_vec);
 }
 
-void OcamLib::print() const {}
+void OcamLib::print() const
+{
+  std::cout << "Final parameters: "
+            << "c=" << distortion_.c << ", "
+            << "d=" << distortion_.d << ", "
+            << "e=" << distortion_.e << ", "
+            << "cx=" << common_params_.cx << ", "
+            << "cy=" << common_params_.cy << std::endl;
+  std::cout << "projection coefficients" << std::endl;
+  for (auto elem : distortion_.proj_coeffs) {
+    std::cout << elem << ", ";
+  }
+  std::cout << std::endl << "unprojection coefficients" << std::endl;
+  for (auto elem : distortion_.unproj_coeffs) {
+    std::cout << elem << ", ";
+  }
+  std::cout << std::endl;
+}
 
-double OcamLib::evaluate(
+void OcamLib::save_result(const std::string & result_path) const
+{
+  YAML::Emitter out;
+
+  out << YAML::BeginMap;
+
+  out << YAML::Key << "image" << YAML::Value;
+  out << YAML::BeginMap;
+  out << YAML::Key << "width" << YAML::Value << common_params_.width;
+  out << YAML::Key << "height" << YAML::Value << common_params_.height;
+  out << YAML::EndMap;
+
+  out << YAML::Key << "parameter" << YAML::Value;
+  out << YAML::BeginMap;
+  out << YAML::Key << "c" << YAML::Value << distortion_.c;
+  out << YAML::Key << "d" << YAML::Value << distortion_.d;
+  out << YAML::Key << "e" << YAML::Value << distortion_.e;
+  out << YAML::Key << "cx" << YAML::Value << common_params_.cx;
+  out << YAML::Key << "cy" << YAML::Value << common_params_.cy;
+
+  out << YAML::Key << "coefficients" << YAML::Value;
+  out << YAML::BeginMap;
+
+  out << YAML::Key << "projection" << YAML::Value << YAML::Flow << YAML::BeginSeq;
+  for (const auto & value : distortion_.proj_coeffs) {
+    out << value;
+  }
+  out << YAML::EndSeq;
+
+  out << YAML::Key << "unprojection" << YAML::Value << YAML::Flow << YAML::BeginSeq;
+  for (const auto & value : distortion_.unproj_coeffs) {
+    out << value;
+  }
+  out << YAML::EndSeq;
+
+  out << YAML::EndMap;
+  out << YAML::EndMap;
+
+  out << YAML::EndMap;
+
+  std::ofstream fout(result_path + "/" + model_name_ + ".yml");
+  fout << out.c_str();
+  fout << std::endl;
+}
+
+double OcamLib::calculate_average_error(
   const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
 {

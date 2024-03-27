@@ -32,6 +32,7 @@ public:
     const std::vector<Eigen::Vector3d> & point3d_vec,
     const std::vector<Eigen::Vector2d> & point2d_vec) override;
   void print() const override;
+  void save_result(const std::string& result_path) const override;
 
 private:
   Params distortion_;
@@ -119,15 +120,15 @@ struct KB8AutoDiffCostFunctor
     T k3 = parameters[6];
     T k4 = parameters[7];
 
-    const double r = std::sqrt(obs_x_ * obs_x_ + obs_y_ * obs_y_);
-    const double theta = std::atan2(r, obs_z_);
-    const double theta2 = theta * theta;
-    const double theta3 = theta * theta2;
-    const double theta5 = theta3 * theta2;
-    const double theta7 = theta5 * theta2;
-    const double theta9 = theta7 * theta2;
-    const double x_r = obs_x_ / r;
-    const double y_r = obs_y_ / r;
+    T r = ceres::sqrt(T(obs_x_) * T(obs_x_) + T(obs_y_) * T(obs_y_));
+    T theta = ceres::atan2(r, T(obs_z_));
+    T theta2 = theta * theta;
+    T theta3 = theta * theta2;
+    T theta5 = theta3 * theta2;
+    T theta7 = theta5 * theta2;
+    T theta9 = theta7 * theta2;
+    T x_r = obs_x_ / r;
+    T y_r = obs_y_ / r;
 
     T d_theta =
       T(theta) + (k1 * T(theta3)) + (k2 * T(theta5)) + (k3 * T(theta7)) + (k4 * T(theta9));

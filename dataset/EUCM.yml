@@ -1,11 +1,10 @@
 image:
-  width: 640
+  width: 754
   height: 480
-
 parameter:
-  fx: 5
-  fy: 6
-  cx: 60
-  cy: 50
-  alpha: 3
-  beta: 3
+  fx: 377.752
+  fy: 376.109
+  cx: 379.981
+  cy: 242.823
+  alpha: 1
+  beta: 0.993895
