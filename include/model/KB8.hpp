@@ -32,7 +32,9 @@ public:
     const std::vector<Eigen::Vector3d> & point3d_vec,
     const std::vector<Eigen::Vector2d> & point2d_vec) override;
   void print() const override;
-  void save_result(const std::string& result_path) const override;
+  void save_result(const std::string & result_path) const override;
+
+  static bool check_proj_condition(double z);
 
 private:
   Params distortion_;

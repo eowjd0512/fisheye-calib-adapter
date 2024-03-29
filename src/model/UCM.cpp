@@ -77,17 +77,9 @@ Eigen::Vector2d UCM::project(const Eigen::Vector3d & point3d) const
   const double denom = distortion_.alpha * d + (1.0 - distortion_.alpha) * Z;
 
   constexpr double PRECISION = 1e-3;
-  if (denom < PRECISION) {
-    Eigen::Vector2d point2d(-1, -1);
-    return point2d;
+  if ((denom < PRECISION) || !check_proj_condition(Z, d, distortion_.alpha)) {
+    return {-1., -1.};
   }
-
-  // if (params.alpha > 0.5) {
-  //   // Check that the point is in the upper hemisphere in case of ellipsoid
-  //   const double zn = Z / denom;
-  //   const T C = (alpha - T(1.)) / (alpha + alpha - T(1.));
-  //   if (zn < C) return false;
-  // }
 
   Eigen::Vector2d point2d;
   point2d.x() = common_params_.fx * (X / denom) + common_params_.cx;
@@ -114,17 +106,37 @@ Eigen::Vector3d UCM::unproject(const Eigen::Vector2d & point2d) const
   const double num = xi + std::sqrt(1.0 + (1.0 - xi * xi) * r_squared);
   const double denom = 1.0 - r_squared;
 
-  // TODO: check by condition
-  //   if (det < 0) {
-  //     Eigen::Vector3d point3d(-1, -1, -1);
-  //     return point3d;
-  //   }
+  if ((denom < 0) || !check_unproj_condition(r_squared, alpha)) {
+    return {-1, -1, -1};
+  }
+
   const double coeff = num / denom;
 
   Eigen::Vector3d point3d;
   point3d = coeff * Eigen::Vector3d(mx, my, 1.0) - Eigen::Vector3d(0., 0., xi);
 
   return point3d;
+}
+
+bool UCM::check_proj_condition(double z, double d, double alpha)
+{
+  double w = (1.0 - alpha) / alpha;
+  if (alpha <= 0.5) {
+    w = alpha / (1.0 - alpha);
+  }
+  return z > -w * d;
+}
+
+bool UCM::check_unproj_condition(double r_squared, double alpha)
+{
+  bool condition = true;
+  if (alpha > 0.5) {
+    const double gamma = 1.0 - alpha;
+    if (r_squared > gamma * gamma / (2 * alpha - 1.0)) {
+      condition = false;
+    }
+  }
+  return condition;
 }
 
 void UCM::optimize(

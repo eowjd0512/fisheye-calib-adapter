@@ -31,6 +31,9 @@ public:
   void print() const override;
   void save_result(const std::string & result_path) const override;
 
+  static bool check_proj_condition(double z, double d, double alpha);
+  static bool check_unproj_condition(double r_squared, double alpha);
+
 private:
   Params distortion_;
 };
@@ -60,7 +63,7 @@ public:
     const double denom = alpha * d + (1.0 - alpha) * obs_z_;
 
     constexpr double PRECISION = 1e-3;
-    if (denom < PRECISION) {
+    if ((denom < PRECISION) || !UCM::check_proj_condition(obs_z_, d, alpha)) {
       return false;
     }
 
@@ -108,6 +111,10 @@ struct UCMAutoDiffCostFunctor
     T d = ceres::sqrt(r_squared);
     T denom = alpha * d + (1.0 - alpha) * T(obs_z_);
 
+    constexpr double PRECISION = 1e-3;
+    if ((denom < PRECISION) || !UCM::check_proj_condition(obs_z_, d, alpha)) {
+      return false;
+    }
     residuals[0] = fx * T(obs_x_) - u_cx * denom;
     residuals[1] = fy * T(obs_y_) - v_cy * denom;
 

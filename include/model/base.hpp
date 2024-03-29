@@ -44,7 +44,7 @@ public:
     const std::vector<Eigen::Vector3d> & point3d_vec,
     const std::vector<Eigen::Vector2d> & point2d_vec) = 0;
   virtual void print() const = 0;
-  virtual void save_result(const std::string& result_path) const = 0;
+  virtual void save_result(const std::string & result_path) const = 0;
 
   const Params & get_common_params() const { return common_params_; };
 

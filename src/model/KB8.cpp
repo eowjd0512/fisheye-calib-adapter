@@ -66,6 +66,11 @@ Eigen::Vector2d KB8::project(const Eigen::Vector3d & point3d) const
   const double X = point3d.x();
   const double Y = point3d.y();
   const double Z = point3d.z();
+
+  if (!check_proj_condition(Z)) {
+    return {-1., -1.};
+  }
+
   const double r = std::sqrt((X * X) + (Y * Y));
   const double theta = std::atan2(r, Z);
   const double theta2 = theta * theta;
@@ -125,6 +130,8 @@ Eigen::Vector3d KB8::unproject(const Eigen::Vector2d & point2d) const
   return point3d;
 }
 
+bool KB8::check_proj_condition(double z) { return z != 0.0; }
+
 void KB8::optimize(
   const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
@@ -139,12 +146,16 @@ void KB8::optimize(
   for (auto i = 0U; i < num_pairs; ++i) {
     const auto & point2d = point2d_vec.at(i);
     const auto & point3d = point3d_vec.at(i);
+
     const double gt_u = point2d.x();
     const double gt_v = point2d.y();
     const double obs_x = point3d.x();
     const double obs_y = point3d.y();
     const double obs_z = point3d.z();
 
+    if (!check_proj_condition(obs_z)) {
+      continue;
+    }
     KB8AnalyticCostFunction * cost_function =
       new KB8AnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
     problem.AddResidualBlock(cost_function, nullptr, parameters);
