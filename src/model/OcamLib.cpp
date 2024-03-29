@@ -174,26 +174,26 @@ Eigen::Vector3d OcamLib::unproject(const Eigen::Vector2d & point2d) const
   // 1/det(A), where A = [c,d;e,1]
   const double inv_det = 1.0 / (distortion_.c - (distortion_.d * distortion_.e));
 
-  const double px = inv_det * ((u - common_params_.cx) - distortion_.d * (v - common_params_.cy));
-  const double py =
+  const double mx = inv_det * ((u - common_params_.cx) - distortion_.d * (v - common_params_.cy));
+  const double my =
     inv_det * (-distortion_.e * (u - common_params_.cx) + distortion_.c * (v - common_params_.cy));
 
   //distance [pixels] of  the point from the image center
-  const double r = std::sqrt((px * px) + (py * py));
+  const double r = std::sqrt((mx * mx) + (my * my));
 
-  double pz = distortion_.unproj_coeffs.at(0);
+  double mz = distortion_.unproj_coeffs.at(0);
   double r_i = 1.0;
   for (auto i = 1U; i < distortion_.unproj_coeffs.size(); ++i) {
     r_i *= r;
-    pz += r_i * distortion_.unproj_coeffs.at(i);
+    mz += r_i * distortion_.unproj_coeffs.at(i);
   }
 
-  const double norm = std::sqrt((px * px) + (py * py) + (pz * pz));
+  const double norm = std::sqrt((mx * mx) + (my * my) + (mz * mz));
 
   Eigen::Vector3d point3d;
-  point3d.x() = px / norm;
-  point3d.y() = py / norm;
-  point3d.z() = pz / norm;
+  point3d.x() = mx / norm;
+  point3d.y() = my / norm;
+  point3d.z() = mz / norm;
 
   return point3d;
 }

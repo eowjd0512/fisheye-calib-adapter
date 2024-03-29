@@ -1,17 +1,17 @@
-#include "model/EUCM.hpp"
+#include "model/double_sphere.hpp"
 
 namespace FCA
 {
 namespace model
 {
 
-EUCM::EUCM(const std::string & model_name, const std::string & config_path)
+DoubleSphere::DoubleSphere(const std::string & model_name, const std::string & config_path)
 : Base(model_name, config_path)
 {
   parse();
 }
 
-void EUCM::parse()
+void DoubleSphere::parse()
 {
   // Load the YAML file
   const YAML::Node config = YAML::LoadFile(config_path_ + "/" + model_name_ + ".yml");
@@ -25,10 +25,10 @@ void EUCM::parse()
   common_params_.fx = config["parameter"]["fx"].as<double>();
   common_params_.fy = config["parameter"]["fy"].as<double>();
   distortion_.alpha = config["parameter"]["alpha"].as<double>();
-  distortion_.beta = config["parameter"]["beta"].as<double>();
+  distortion_.xi = config["parameter"]["xi"].as<double>();
 }
 
-void EUCM::initialize(
+void DoubleSphere::initialize(
   const Base::Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
 {
@@ -37,8 +37,8 @@ void EUCM::initialize(
   // set fx,fy,cx,cy
   common_params_ = common_params;
 
-  // set beta
-  distortion_.beta = 1.0;
+  // set xi
+  distortion_.xi = 0.0;
 
   // set alpha
   Eigen::MatrixXd A(point3d_vec.size() * 2, 1);
@@ -71,27 +71,24 @@ void EUCM::initialize(
   std::cout << "initialized alpha: " << distortion_.alpha << std::endl;
 }
 
-Eigen::Vector2d EUCM::project(const Eigen::Vector3d & point3d) const
+Eigen::Vector2d DoubleSphere::project(const Eigen::Vector3d & point3d) const
 {
   const double X = point3d.x();
   const double Y = point3d.y();
   const double Z = point3d.z();
 
-  const double d = std::sqrt(distortion_.beta * ((X * X) + (Y * Y)) + (Z * Z));
-  const double denom = distortion_.alpha * d + (1.0 - distortion_.alpha) * Z;
+  const double r_squared = (X * X) + (Y * Y);
+  const double d1 = std::sqrt(r_squared + (Z * Z));
+  const double gamma = distortion_.xi * d1 + Z;
+  const double d2 = std::sqrt(r_squared + gamma * gamma);
+
+  const double denom = distortion_.alpha * d2 + (1.0 - distortion_.alpha) * gamma;
 
   constexpr double PRECISION = 1e-3;
   if (denom < PRECISION) {
     Eigen::Vector2d point2d(-1, -1);
     return point2d;
   }
-
-  // if (params.alpha > 0.5) {
-  //   // Check that the point is in the upper hemisphere in case of ellipsoid
-  //   const double zn = Z / denom;
-  //   const T C = (alpha - T(1.)) / (alpha + alpha - T(1.));
-  //   if (zn < C) return false;
-  // }
 
   Eigen::Vector2d point2d;
   point2d.x() = common_params_.fx * (X / denom) + common_params_.cx;
@@ -100,46 +97,44 @@ Eigen::Vector2d EUCM::project(const Eigen::Vector3d & point3d) const
   return point2d;
 }
 
-Eigen::Vector3d EUCM::unproject(const Eigen::Vector2d & point2d) const
+Eigen::Vector3d DoubleSphere::unproject(const Eigen::Vector2d & point2d) const
 {
   const double fx = common_params_.fx;
   const double fy = common_params_.fy;
   const double cx = common_params_.cx;
   const double cy = common_params_.cy;
   const double alpha = distortion_.alpha;
-  const double beta = distortion_.beta;
+  const double xi = distortion_.xi;
+
   const double u = point2d.x();
   const double v = point2d.y();
-
-  const double mx = (u - cx) / fx;
-  const double my = (v - cy) / fy;
-
-  const double r_squared = (mx * mx) + (my * my);
   const double gamma = 1.0 - alpha;
-  const double num = 1.0 - r_squared * alpha * alpha * beta;
-  const double det = 1.0 - (alpha - gamma) * beta * r_squared;
-  double denom = gamma + alpha * sqrt(det);
-  if (det < 0) {
-    Eigen::Vector3d point3d(-1, -1, -1);
-    return point3d;
-  }
-  const double mz = num / denom;
-  const double norm = std::sqrt((mx * mx) + (my * my) + (mz * mz));
+  const double mx = (u - cx) / fx * gamma;
+  const double my = (v - cy) / fy * gamma;
+  const double r_squared = (mx * mx) + (my * my);
+  const double mz = (1.0 - alpha * alpha * r_squared) /
+                    (alpha * std::sqrt(1.0 - (2 * alpha - 1.0) * r_squared) + gamma);
+  const double mz_squared = mz * mz;
+
+  const double num = mz * xi + std::sqrt(mz_squared + (1.0 - xi * xi) * r_squared);
+  const double denom = mz_squared + r_squared;
+
+  // TODO: check by condition
+
+  const double coeff = num / denom;
 
   Eigen::Vector3d point3d;
-  point3d.x() = mx / norm;
-  point3d.y() = my / norm;
-  point3d.z() = mz / norm;
+  point3d = coeff * Eigen::Vector3d(mx, my, mz) - Eigen::Vector3d(0., 0., xi);
 
   return point3d;
 }
 
-void EUCM::optimize(
+void DoubleSphere::optimize(
   const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
 {
   double parameters[6] = {common_params_.fx, common_params_.fy, common_params_.cx,
-                          common_params_.cy, distortion_.alpha, distortion_.beta};
+                          common_params_.cy, distortion_.alpha, distortion_.xi};
 
   ceres::Problem problem;
 
@@ -153,8 +148,8 @@ void EUCM::optimize(
     const double obs_y = point3d.y();
     const double obs_z = point3d.z();
 
-    EUCMAnalyticCostFunction * cost_function =
-      new EUCMAnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
+    DSAnalyticCostFunction * cost_function =
+      new DSAnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
     problem.AddResidualBlock(cost_function, nullptr, parameters);
 
     // set parameters range
@@ -176,10 +171,10 @@ void EUCM::optimize(
   common_params_.cx = parameters[2];
   common_params_.cy = parameters[3];
   distortion_.alpha = parameters[4];
-  distortion_.beta = parameters[5];
+  distortion_.xi = parameters[5];
 }
 
-void EUCM::print() const
+void DoubleSphere::print() const
 {
   std::cout << "Final parameters: "
             << "fx=" << common_params_.fx << ", "
@@ -187,10 +182,10 @@ void EUCM::print() const
             << "cx=" << common_params_.cx << ", "
             << "cy=" << common_params_.cy << ", "
             << "alpha=" << distortion_.alpha << ", "
-            << "beta=" << distortion_.beta << std::endl;
+            << "xi=" << distortion_.xi << std::endl;
 }
 
-void EUCM::save_result(const std::string & result_path) const
+void DoubleSphere::save_result(const std::string & result_path) const
 {
   YAML::Emitter out;
 
@@ -208,7 +203,7 @@ void EUCM::save_result(const std::string & result_path) const
   out << YAML::Key << "cx" << YAML::Value << common_params_.cx;
   out << YAML::Key << "cy" << YAML::Value << common_params_.cy;
   out << YAML::Key << "alpha" << YAML::Value << distortion_.alpha;
-  out << YAML::Key << "beta" << YAML::Value << distortion_.beta;
+  out << YAML::Key << "xi" << YAML::Value << distortion_.xi;
   out << YAML::EndMap;
 
   out << YAML::EndMap;

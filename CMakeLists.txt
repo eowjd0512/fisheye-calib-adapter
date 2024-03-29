@@ -15,9 +15,11 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
 set(SOURCE_FILES
         src/adapter.cpp
         src/utils.cpp
+        src/model/double_sphere.cpp
         src/model/EUCM.cpp
         src/model/KB8.cpp
         src/model/OcamLib.cpp
+        src/model/UCM.cpp
         )
 add_library(${PACKAGE_NAME}
         ${SOURCE_FILES}
