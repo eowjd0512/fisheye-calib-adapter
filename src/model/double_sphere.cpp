@@ -85,9 +85,8 @@ Eigen::Vector2d DoubleSphere::project(const Eigen::Vector3d & point3d) const
   const double denom = distortion_.alpha * d2 + (1.0 - distortion_.alpha) * gamma;
 
   constexpr double PRECISION = 1e-3;
-  if (denom < PRECISION) {
-    Eigen::Vector2d point2d(-1, -1);
-    return point2d;
+  if ((denom < PRECISION) || !check_proj_condition(Z, d1, distortion_.xi, distortion_.alpha)) {
+    return {-1, -1};
   }
 
   Eigen::Vector2d point2d;
@@ -119,7 +118,10 @@ Eigen::Vector3d DoubleSphere::unproject(const Eigen::Vector2d & point2d) const
   const double num = mz * xi + std::sqrt(mz_squared + (1.0 - xi * xi) * r_squared);
   const double denom = mz_squared + r_squared;
 
-  // TODO: check by condition
+  constexpr double PRECISION = 1e-3;
+  if ((denom < PRECISION) || !check_unproj_condition(r_squared, alpha)) {
+    return {-1, -1, -1};
+  }
 
   const double coeff = num / denom;
 
@@ -127,6 +129,27 @@ Eigen::Vector3d DoubleSphere::unproject(const Eigen::Vector2d & point2d) const
   point3d = coeff * Eigen::Vector3d(mx, my, mz) - Eigen::Vector3d(0., 0., xi);
 
   return point3d;
+}
+
+bool DoubleSphere::check_proj_condition(double z, double d1, double xi, double alpha)
+{
+  double w1 = (1.0 - alpha) / alpha;
+  if (alpha <= 0.5) {
+    w1 = alpha / (1.0 - alpha);
+  }
+  const double w2 = (w1 + xi) / std::sqrt(2 * w1 * xi + xi * xi + 1.0);
+  return z > -w2 * d1;
+}
+
+bool DoubleSphere::check_unproj_condition(double r_squared, double alpha)
+{
+  bool condition = true;
+  if (alpha > 0.5) {
+    if (r_squared > 1.0 / (2 * alpha - 1.0)) {
+      condition = false;
+    }
+  }
+  return condition;
 }
 
 void DoubleSphere::optimize(

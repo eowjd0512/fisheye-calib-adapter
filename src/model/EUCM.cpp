@@ -56,7 +56,6 @@ void EUCM::initialize(
     const double d = std::sqrt((X * X) + (Y * Y) + (Z * Z));
     const double u_cx = u - common_params_.cx;
     const double v_cy = v - common_params_.cy;
-    // distortion_.alpha = ((common_params_.fx * X) - (u_cx * Z)) / (u_cx * (d - Z));
 
     A(i * 2, 0) = u_cx * (d - Z);
     A(i * 2 + 1, 0) = v_cy * (d - Z);
@@ -81,17 +80,10 @@ Eigen::Vector2d EUCM::project(const Eigen::Vector3d & point3d) const
   const double denom = distortion_.alpha * d + (1.0 - distortion_.alpha) * Z;
 
   constexpr double PRECISION = 1e-3;
-  if (denom < PRECISION) {
+  if ((denom < PRECISION) || !check_proj_condition(Z, denom, distortion_.alpha, distortion_.beta)) {
     Eigen::Vector2d point2d(-1, -1);
     return point2d;
   }
-
-  // if (params.alpha > 0.5) {
-  //   // Check that the point is in the upper hemisphere in case of ellipsoid
-  //   const double zn = Z / denom;
-  //   const T C = (alpha - T(1.)) / (alpha + alpha - T(1.));
-  //   if (zn < C) return false;
-  // }
 
   Eigen::Vector2d point2d;
   point2d.x() = common_params_.fx * (X / denom) + common_params_.cx;
@@ -118,10 +110,11 @@ Eigen::Vector3d EUCM::unproject(const Eigen::Vector2d & point2d) const
   const double gamma = 1.0 - alpha;
   const double num = 1.0 - r_squared * alpha * alpha * beta;
   const double det = 1.0 - (alpha - gamma) * beta * r_squared;
-  double denom = gamma + alpha * sqrt(det);
-  if (det < 0) {
-    Eigen::Vector3d point3d(-1, -1, -1);
-    return point3d;
+  const double denom = gamma + alpha * sqrt(det);
+
+  constexpr double PRECISION = 1e-3;
+  if (det < PRECISION || !check_unproj_condition(r_squared, alpha, beta)) {
+    return {-1, -1, -1};
   }
   const double mz = num / denom;
   const double norm = std::sqrt((mx * mx) + (my * my) + (mz * mz));
@@ -132,6 +125,31 @@ Eigen::Vector3d EUCM::unproject(const Eigen::Vector2d & point2d) const
   point3d.z() = mz / norm;
 
   return point3d;
+}
+
+bool EUCM::check_proj_condition(double z, double denom, double alpha, double beta)
+{
+  bool condition = true;
+  if (alpha > 0.5) {
+    // Check that the point is in the upper hemisphere in case of ellipsoid
+    const double zn = z / denom;
+    const double c = (alpha - 1.0) / (2.0 * alpha - 1.0);
+    if (z < denom * c) {
+      condition = false;
+    }
+  }
+  return condition;
+}
+
+bool EUCM::check_unproj_condition(double r_squared, double alpha, double beta)
+{
+  bool condition = true;
+  if (alpha > 0.5) {
+    if (r_squared > 1.0 / beta * (2 * alpha - 1.0)) {
+      condition = false;
+    }
+  }
+  return condition;
 }
 
 void EUCM::optimize(

@@ -43,6 +43,7 @@ public:
     const std::vector<Eigen::Vector3d> & point3d_vec,
     const std::vector<Eigen::Vector2d> & point2d_vec);
 
+  static bool check_proj_condition(double z);
 private:
   Params distortion_;
 };

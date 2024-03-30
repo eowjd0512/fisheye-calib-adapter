@@ -30,7 +30,10 @@ public:
     const std::vector<Eigen::Vector3d> & point3d_vec,
     const std::vector<Eigen::Vector2d> & point2d_vec) override;
   void print() const override;
-  void save_result(const std::string& result_path) const override;
+  void save_result(const std::string & result_path) const override;
+
+  static bool check_proj_condition(double z, double denom, double alpha, double beta);
+  static bool check_unproj_condition(double r_squared, double alpha, double beta);
 
 private:
   Params distortion_;
@@ -63,7 +66,7 @@ public:
     const double denom = alpha * d + (1.0 - alpha) * obs_z_;
 
     constexpr double PRECISION = 1e-3;
-    if (denom < PRECISION) {
+    if ((denom < PRECISION) || !EUCM::check_proj_condition(obs_z_, denom, alpha, beta)) {
       return false;
     }
 
@@ -113,6 +116,11 @@ struct EUCMAutoDiffCostFunctor
     T v_cy = gt_v_ - cy;
     T d = ceres::sqrt(beta * T(r_squared) + T(obs_z_) * T(obs_z_));
     T denom = alpha * d + (1.0 - alpha) * T(obs_z_);
+
+    constexpr double PRECISION = 1e-3;
+    if ((denom < PRECISION) || !EUCM::check_proj_condition(obs_z_, denom, alpha, beta)) {
+      return false;
+    }
 
     residuals[0] = fx * T(obs_x_) - u_cx * denom;
     residuals[1] = fy * T(obs_y_) - v_cy * denom;

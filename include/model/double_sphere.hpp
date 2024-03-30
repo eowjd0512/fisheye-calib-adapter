@@ -32,6 +32,9 @@ public:
   void print() const override;
   void save_result(const std::string & result_path) const override;
 
+  static bool check_proj_condition(double z, double d1, double xi, double alpha);
+  static bool check_unproj_condition(double r_squared, double alpha);
+
 private:
   Params distortion_;
 };
@@ -66,7 +69,7 @@ public:
     const double denom = alpha * d2 + m_alpha * gamma;
 
     constexpr double PRECISION = 1e-3;
-    if (denom < PRECISION) {
+    if ((denom < PRECISION) || !DoubleSphere::check_proj_condition(obs_z_, d1, xi, alpha)) {
       return false;
     }
 
@@ -119,6 +122,11 @@ struct DSAutoDiffCostFunctor
     T gamma = xi * d1 + T(obs_z_);
     T d2 = ceres::sqrt(r_squared + gamma * gamma);
     T denom = alpha * d2 + (1.0 - alpha) * gamma;
+
+    constexpr double PRECISION = 1e-3;
+    if ((denom < PRECISION) || !DoubleSphere::check_proj_condition(obs_z_, d1, xi, alpha)) {
+      return false;
+    }
 
     residuals[0] = fx * T(obs_x_) - u_cx * denom;
     residuals[1] = fy * T(obs_y_) - v_cy * denom;

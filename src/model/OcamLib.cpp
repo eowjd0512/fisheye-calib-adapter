@@ -198,6 +198,8 @@ Eigen::Vector3d OcamLib::unproject(const Eigen::Vector2d & point2d) const
   return point3d;
 }
 
+bool OcamLib::check_proj_condition(double z) { return z != 0.0; }
+
 void OcamLib::optimize(
   const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
@@ -237,6 +239,10 @@ void OcamLib::optimize(
     const double obs_x = point3d.x();
     const double obs_y = point3d.y();
     const double obs_z = point3d.z();
+
+    if (!check_proj_condition(obs_z)) {
+      continue;
+    }
 
     OcamLibAnalyticCostFunction * cost_function =
       new OcamLibAnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);

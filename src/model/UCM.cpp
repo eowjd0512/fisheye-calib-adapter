@@ -106,7 +106,8 @@ Eigen::Vector3d UCM::unproject(const Eigen::Vector2d & point2d) const
   const double num = xi + std::sqrt(1.0 + (1.0 - xi * xi) * r_squared);
   const double denom = 1.0 - r_squared;
 
-  if ((denom < 0) || !check_unproj_condition(r_squared, alpha)) {
+  constexpr double PRECISION = 1e-3;
+  if ((denom < PRECISION) || !check_unproj_condition(r_squared, alpha)) {
     return {-1, -1, -1};
   }
 
