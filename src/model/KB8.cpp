@@ -11,7 +11,24 @@ KB8::KB8(const std::string & model_name, const std::string & config_path)
   parse();
 }
 
-void KB8::parse() {}
+void KB8::parse()
+{
+  // Load the YAML file
+  const YAML::Node config = YAML::LoadFile(config_path_ + "/" + model_name_ + ".yml");
+
+  common_params_.width = config["image"]["width"].as<int32_t>();
+  common_params_.height = config["image"]["height"].as<int32_t>();
+
+  // Read parameters
+  common_params_.cx = config["parameter"]["cx"].as<double>();
+  common_params_.cy = config["parameter"]["cy"].as<double>();
+  common_params_.fx = config["parameter"]["fx"].as<double>();
+  common_params_.fy = config["parameter"]["fy"].as<double>();
+  distortion_.k1 = config["parameter"]["k1"].as<double>();
+  distortion_.k2 = config["parameter"]["k2"].as<double>();
+  distortion_.k3 = config["parameter"]["k3"].as<double>();
+  distortion_.k4 = config["parameter"]["k4"].as<double>();
+}
 
 void KB8::initialize(
   const Base::Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
@@ -99,7 +116,11 @@ Eigen::Vector3d KB8::unproject(const Eigen::Vector2d & point2d) const
   double ru = std::sqrt(mx * mx + my * my);
   ru = std::min(std::max(-M_PI / 2.0, ru), M_PI / 2.0);
   double theta = ru;
-  constexpr double PRECISION = 1e-8;
+  constexpr double PRECISION = 1e-3;
+
+  bool converged = true;
+  constexpr auto MAX_ITERATION = 10;
+  auto i = 0;
   if (ru > PRECISION) {
     // newton raphson
     while (true) {
@@ -119,9 +140,19 @@ Eigen::Vector3d KB8::unproject(const Eigen::Vector2d & point2d) const
       theta -= delta;
       if (std::abs(delta) < PRECISION) {
         break;
+      } else if (++i > MAX_ITERATION) {
+        converged = false;
+        break;
       }
     }
+  } else {
+    converged = false;
   }
+
+  if (!converged) {
+    return {-1., -1., -1.};
+  }
+
   Eigen::Vector3d point3d;
   point3d.x() = sin(theta) * (mx / ru);
   point3d.y() = sin(theta) * (my / ru);
@@ -130,7 +161,7 @@ Eigen::Vector3d KB8::unproject(const Eigen::Vector2d & point2d) const
   return point3d;
 }
 
-bool KB8::check_proj_condition(double z) { return z != 0.0; }
+bool KB8::check_proj_condition(double z) { return z > 0.0; }
 
 void KB8::optimize(
   const std::vector<Eigen::Vector3d> & point3d_vec,
@@ -210,9 +241,10 @@ void KB8::save_result(const std::string & result_path) const
   out << YAML::Key << "fy" << YAML::Value << common_params_.fy;
   out << YAML::Key << "cx" << YAML::Value << common_params_.cx;
   out << YAML::Key << "cy" << YAML::Value << common_params_.cy;
-  out << YAML::Key << "coefficients" << YAML::Value;
-  out << YAML::Flow << YAML::BeginSeq << distortion_.k1 << distortion_.k2 << distortion_.k3
-      << distortion_.k4 << YAML::EndSeq;
+  out << YAML::Key << "k1" << YAML::Value << distortion_.k1;
+  out << YAML::Key << "k2" << YAML::Value << distortion_.k2;
+  out << YAML::Key << "k3" << YAML::Value << distortion_.k3;
+  out << YAML::Key << "k4" << YAML::Value << distortion_.k4;
   out << YAML::EndMap;
 
   out << YAML::EndMap;

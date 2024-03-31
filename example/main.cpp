@@ -1,6 +1,3 @@
-
-// #include <opencv2/opencv.hpp>
-
 #include <string>
 
 #include "adapter.hpp"
@@ -26,7 +23,7 @@ int main(int argc, char ** argv)
   bool show = true;
   adapter.compare_image(dataset_path + "/image.jpg", show);
 
-  output_model->save_result(result_path);
+  // output_model->save_result(result_path);
 
   return 0;
 }

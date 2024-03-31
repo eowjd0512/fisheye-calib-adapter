@@ -111,62 +111,6 @@ Eigen::Vector2d OcamLib::project(const Eigen::Vector3d & point3d) const
   return point2d;
 }
 
-void OcamLib::estimate_projection_coefficients(
-  const std::vector<Eigen::Vector3d> & point3d_vec,
-  const std::vector<Eigen::Vector2d> & point2d_vec)
-{
-  assert(point3d_vec.size() == point2d_vec.size());
-
-  constexpr auto MAX_POLY_NUM = 20;
-
-  std::map<uint32_t, std::vector<double>> coefficient_candidates;
-  double max_error = std::numeric_limits<double>::max();
-  int32_t best_poly_num = -1;
-  for (auto n = 0; n <= MAX_POLY_NUM; ++n) {
-    // set polynomial coefficients for projection
-    Eigen::MatrixXd A(point3d_vec.size() * 2, n + 1);
-    Eigen::VectorXd b(point3d_vec.size() * 2, 1);
-
-    for (auto i = 0U; i < point3d_vec.size(); ++i) {
-      const auto & point3d = point3d_vec.at(i);
-      const auto & point2d = point2d_vec.at(i);
-      const double X = point3d.x();
-      const double Y = point3d.y();
-      const double Z = point3d.z();
-      const double u = point2d.x();
-      const double v = point2d.y();
-      const double r = std::sqrt((X * X) + (Y * Y));
-      const double theta = atan(Z / r);
-
-      const double term1 = (distortion_.c * (X / r)) + (distortion_.d * (Y / r));
-      const double term2 = (distortion_.e * (X / r)) + (Y / r);
-
-      double theta_i = 1.0;
-      A(2 * i, 0) = term1;
-      A((2 * i) + 1, 0) = term2;
-      for (auto j = 1; j <= n; ++j) {
-        theta_i *= theta;
-        A(2 * i, j) = term1 * theta_i;
-        A((2 * i) + 1, j) = term2 * theta_i;
-      }
-      b[2 * i] = u - common_params_.cx;
-      b[(2 * i) + 1] = v - common_params_.cy;
-    }
-    const Eigen::VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
-    distortion_.proj_coeffs.clear();
-    distortion_.proj_coeffs = std::vector<double>(x.data(), x.data() + x.size());
-
-    const double error = calculate_average_error(point3d_vec, point2d_vec);
-    if (error < max_error) {
-      max_error = error;
-      coefficient_candidates.insert(std::make_pair(n, distortion_.proj_coeffs));
-      best_poly_num = n;
-    }
-  }
-  distortion_.proj_coeffs.clear();
-  distortion_.proj_coeffs = coefficient_candidates.at(best_poly_num);
-}
-
 Eigen::Vector3d OcamLib::unproject(const Eigen::Vector2d & point2d) const
 {
   const double u = point2d.x();
@@ -198,7 +142,7 @@ Eigen::Vector3d OcamLib::unproject(const Eigen::Vector2d & point2d) const
   return point3d;
 }
 
-bool OcamLib::check_proj_condition(double z) { return z != 0.0; }
+bool OcamLib::check_proj_condition(double z) { return z > 0.0; }
 
 void OcamLib::optimize(
   const std::vector<Eigen::Vector3d> & point3d_vec,
@@ -244,9 +188,13 @@ void OcamLib::optimize(
       continue;
     }
 
-    OcamLibAnalyticCostFunction * cost_function =
-      new OcamLibAnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
-    problem.AddResidualBlock(cost_function, nullptr, parameters);
+    // OcamLibAnalyticCostFunction * cost_function =
+    //   new OcamLibAnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
+    // problem.AddResidualBlock(cost_function, nullptr, parameters);
+    problem.AddResidualBlock(
+      new ceres::AutoDiffCostFunction<OcamLibAutoDiffCostFunctor, 2, 10>(
+        new OcamLibAutoDiffCostFunctor(gt_u, gt_v, obs_x, obs_y, obs_z)),
+      nullptr, parameters);
   }
   ceres::Solver::Options options;
   options.linear_solver_type = ceres::DENSE_QR;
@@ -333,6 +281,62 @@ void OcamLib::save_result(const std::string & result_path) const
   std::ofstream fout(result_path + "/" + model_name_ + ".yml");
   fout << out.c_str();
   fout << std::endl;
+}
+
+void OcamLib::estimate_projection_coefficients(
+  const std::vector<Eigen::Vector3d> & point3d_vec,
+  const std::vector<Eigen::Vector2d> & point2d_vec)
+{
+  assert(point3d_vec.size() == point2d_vec.size());
+
+  constexpr auto MAX_POLY_NUM = 20;
+
+  std::map<uint32_t, std::vector<double>> coefficient_candidates;
+  double max_error = std::numeric_limits<double>::max();
+  int32_t best_poly_num = -1;
+  for (auto n = 0; n <= MAX_POLY_NUM; ++n) {
+    // set polynomial coefficients for projection
+    Eigen::MatrixXd A(point3d_vec.size() * 2, n + 1);
+    Eigen::VectorXd b(point3d_vec.size() * 2, 1);
+
+    for (auto i = 0U; i < point3d_vec.size(); ++i) {
+      const auto & point3d = point3d_vec.at(i);
+      const auto & point2d = point2d_vec.at(i);
+      const double X = point3d.x();
+      const double Y = point3d.y();
+      const double Z = point3d.z();
+      const double u = point2d.x();
+      const double v = point2d.y();
+      const double r = std::sqrt((X * X) + (Y * Y));
+      const double theta = atan(Z / r);
+
+      const double term1 = (distortion_.c * (X / r)) + (distortion_.d * (Y / r));
+      const double term2 = (distortion_.e * (X / r)) + (Y / r);
+
+      double theta_i = 1.0;
+      A(2 * i, 0) = term1;
+      A((2 * i) + 1, 0) = term2;
+      for (auto j = 1; j <= n; ++j) {
+        theta_i *= theta;
+        A(2 * i, j) = term1 * theta_i;
+        A((2 * i) + 1, j) = term2 * theta_i;
+      }
+      b[2 * i] = u - common_params_.cx;
+      b[(2 * i) + 1] = v - common_params_.cy;
+    }
+    const Eigen::VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+    distortion_.proj_coeffs.clear();
+    distortion_.proj_coeffs = std::vector<double>(x.data(), x.data() + x.size());
+
+    const double error = calculate_average_error(point3d_vec, point2d_vec);
+    if (error < max_error) {
+      max_error = error;
+      coefficient_candidates.insert(std::make_pair(n, distortion_.proj_coeffs));
+      best_poly_num = n;
+    }
+  }
+  distortion_.proj_coeffs.clear();
+  distortion_.proj_coeffs = coefficient_candidates.at(best_poly_num);
 }
 
 double OcamLib::calculate_average_error(

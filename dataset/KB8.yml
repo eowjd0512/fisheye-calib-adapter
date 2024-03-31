@@ -1,9 +1,12 @@
 image:
-  width: 640
+  width: 754
   height: 480
 parameter:
-  fx: 5
-  fy: 6
-  cx: 60
-  cy: 50
-  coefficients: [1, 2, 3, 4]
+  fx: 377.752
+  fy: 376.109
+  cx: 379.981
+  cy: 242.823
+  k1: -0.163622
+  k2: 0.00684243
+  k3: 9.63282e-05
+  k4: -2.19791e-05

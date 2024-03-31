@@ -10,7 +10,7 @@ find_package(Ceres REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR} ${OpenCV_INCLUDE_DIRS})
 
 set(SOURCE_FILES
         src/adapter.cpp
