@@ -16,7 +16,7 @@ void Adapter::adapt()
 {
   const auto & common_params = input_model_->get_common_params();
   // Sample points
-  constexpr auto NUM_SAMPLE_POINTS = 1000;
+  constexpr auto NUM_SAMPLE_POINTS = 100000;
   const std::vector<Eigen::Vector2d> sampled_point2d_vec =
     this->sample_points(common_params.width, common_params.height, NUM_SAMPLE_POINTS);
 
@@ -51,7 +51,7 @@ void Adapter::adapt()
       output_point2d_vec.emplace_back(point2d);
     }
   }
-  // this->display_point2d_vec("Output model's projection", output_point2d_vec);
+  this->display_point2d_vec("Output model's projection", output_point2d_vec);
 
   const cv::Mat output_recovered_image =
     this->recover_image(common_params.width, common_params.height, point3d_vec_);

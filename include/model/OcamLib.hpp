@@ -33,7 +33,7 @@ public:
     const std::vector<Eigen::Vector3d> & point3d_vec,
     const std::vector<Eigen::Vector2d> & point2d_vec) override;
   void print() const override;
-  void save_result(const std::string& result_path) const override;
+  void save_result(const std::string & result_path) const override;
 
   void estimate_projection_coefficients(
     const std::vector<Eigen::Vector3d> & point3d_vec,
@@ -44,11 +44,12 @@ public:
     const std::vector<Eigen::Vector2d> & point2d_vec);
 
   static bool check_proj_condition(double z);
+
 private:
   Params distortion_;
 };
 
-class OcamLibAnalyticCostFunction : public ceres::SizedCostFunction<2, 10>
+class OcamLibAnalyticCostFunction : public ceres::SizedCostFunction<2, 7>
 {
 public:
   OcamLibAnalyticCostFunction(double gt_u, double gt_v, double obs_x, double obs_y, double obs_z)
@@ -72,12 +73,11 @@ public:
     const double k3 = parameters[0][8];
     const double k4 = parameters[0][9];
 
-    const double c_de = c - (d * e);
     const double u_cx = gt_u_ - cx;
     const double v_cy = gt_v_ - cy;
     const double px = obs_x_ / obs_z_;
     const double py = obs_y_ / obs_z_;
-    const double r = std::sqrt(px * px + py * py);
+    const double r = std::sqrt(u_cx * u_cx + v_cy * v_cy);
     const double r2 = r * r;
     const double r3 = r * r2;
     const double r4 = r2 * r2;
@@ -86,24 +86,17 @@ public:
 
     const double theta_px = theta * px;
     const double theta_py = theta * py;
-    residuals[0] = u_cx - d * v_cy - theta_px * c_de;
-    residuals[1] = -e * u_cx + c * v_cy - theta_py * c_de;
+    residuals[0] = u_cx - theta_px;
+    residuals[1] = v_cy - theta_py;
 
     if (jacobians) {
       if (jacobians[0]) {
-        Eigen::Map<Eigen::Matrix<double, 2, 10, Eigen::RowMajor>> jacobian_ocamlib(jacobians[0]);
-        // ∂residual_x / ∂c, ∂residual_y / ∂c
-        jacobian_ocamlib.col(0) << -theta_px, -theta_py + v_cy;
-        // ∂residual_x / ∂d, ∂residual_y / ∂d
-        jacobian_ocamlib.col(1) << -v_cy + e * theta_px, e * theta_py;
-        // ∂residual_x / ∂e, ∂residual_y / ∂e
-        jacobian_ocamlib.col(2) << d * theta_px, d * theta_py - u_cx;
-        jacobian_ocamlib.col(3) << -1.0, e;  // ∂residual_x / ∂cx, ∂residual_y / ∂cx
-        jacobian_ocamlib.col(4) << d, -c;    // ∂residual_x / ∂cy, ∂residual_y / ∂cy
-
+        Eigen::Map<Eigen::Matrix<double, 2, 7, Eigen::RowMajor>> jacobian_ocamlib(jacobians[0]);
+        jacobian_ocamlib.col(0) << -1.0, 0.0;  // ∂residual_x / ∂cx, ∂residual_y / ∂cx
+        jacobian_ocamlib.col(1) << 0.0, -1.0;  // ∂residual_x / ∂cy, ∂residual_y / ∂cy
         // ∂residual / ∂k0..4, ∂residual / ∂theta * ∂theta / ∂k0..4
         Eigen::Vector2d de_dtheta;
-        de_dtheta << -c_de * px, -c_de * py;
+        de_dtheta << -px, -py;
         Eigen::Matrix<double, 1, 5> dtheta_dks;
         dtheta_dks << 1, r, r2, r3, r4;
         jacobian_ocamlib.rightCols<5>() = de_dtheta * dtheta_dks;
@@ -143,7 +136,12 @@ struct OcamLibAutoDiffCostFunctor
     T v_cy = T(gt_v_) - cy;
     T px = T(obs_x_) / T(obs_z_);
     T py = T(obs_y_) / T(obs_z_);
-    T r = ceres::sqrt(px * px + py * py);
+
+    T a = u_cx - (d * v_cy);
+    T b = (-e * u_cx) + (c * v_cy);
+    T mx = a / c_de;
+    T my = b / c_de;
+    T r = ceres::sqrt(mx * mx + my * my);
     T r2 = r * r;
     T r3 = r * r2;
     T r4 = r2 * r2;
@@ -153,8 +151,8 @@ struct OcamLibAutoDiffCostFunctor
     T theta_px = theta * T(px);
     T theta_py = theta * T(py);
 
-    residuals[0] = u_cx - d * v_cy - theta_px * c_de;
-    residuals[1] = -e * u_cx + c * v_cy - theta_py * c_de;
+    residuals[0] = a - theta_px * c_de;
+    residuals[1] = b - theta_py * c_de;
 
     return true;
   }

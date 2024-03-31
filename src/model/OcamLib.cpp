@@ -62,7 +62,10 @@ void OcamLib::initialize(
     const double Z = point3d.z();
     const double u = point2d.x();
     const double v = point2d.y();
-    const double r = std::sqrt((X * X) + (Y * Y));
+    const double mx = u - common_params_.cx;
+    const double my = v - common_params_.cy;
+
+    const double r = std::sqrt((mx * mx) + (my * my));
     const double r2 = r * r;
     const double r3 = r * r2;
     const double r4 = r2 * r2;
@@ -148,10 +151,7 @@ void OcamLib::optimize(
   const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
 {
-  double parameters[10] = {
-    distortion_.c,
-    distortion_.d,
-    distortion_.e,
+  double parameters[7] = {
     common_params_.cx,
     common_params_.cy,
     distortion_.unproj_coeffs[0],
@@ -159,18 +159,6 @@ void OcamLib::optimize(
     distortion_.unproj_coeffs[2],
     distortion_.unproj_coeffs[3],
     distortion_.unproj_coeffs[4]};
-
-  std::cout << "Before optimizing parameters: "
-            << "c=" << parameters[0] << ", "
-            << "d=" << parameters[1] << ", "
-            << "e=" << parameters[2] << ", "
-            << "cx=" << parameters[3] << ", "
-            << "cy=" << parameters[4] << ", "
-            << "k0=" << parameters[5] << ", "
-            << "k1=" << parameters[6] << ", "
-            << "k2=" << parameters[7] << ", "
-            << "k3=" << parameters[8] << ", "
-            << "k4=" << parameters[9] << std::endl;
 
   ceres::Problem problem;
 
@@ -188,33 +176,29 @@ void OcamLib::optimize(
       continue;
     }
 
-    // OcamLibAnalyticCostFunction * cost_function =
-    //   new OcamLibAnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
-    // problem.AddResidualBlock(cost_function, nullptr, parameters);
-    problem.AddResidualBlock(
-      new ceres::AutoDiffCostFunction<OcamLibAutoDiffCostFunctor, 2, 10>(
-        new OcamLibAutoDiffCostFunctor(gt_u, gt_v, obs_x, obs_y, obs_z)),
-      nullptr, parameters);
+    OcamLibAnalyticCostFunction * cost_function =
+      new OcamLibAnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
+    problem.AddResidualBlock(cost_function, nullptr, parameters);
+    // problem.AddResidualBlock(
+    //   new ceres::AutoDiffCostFunction<OcamLibAutoDiffCostFunctor, 2, 10>(
+    //     new OcamLibAutoDiffCostFunctor(gt_u, gt_v, obs_x, obs_y, obs_z)),
+    //   nullptr, parameters);
   }
   ceres::Solver::Options options;
   options.linear_solver_type = ceres::DENSE_QR;
   options.minimizer_progress_to_stdout = true;
-
   ceres::Solver::Summary summary;
   ceres::Solve(options, &problem, &summary);
 
   std::cout << summary.FullReport() << std::endl;
 
-  distortion_.c = parameters[0];
-  distortion_.d = parameters[1];
-  distortion_.e = parameters[2];
-  common_params_.cx = parameters[3];
-  common_params_.cx = parameters[4];
-  distortion_.unproj_coeffs[0] = parameters[5];
-  distortion_.unproj_coeffs[1] = parameters[6];
-  distortion_.unproj_coeffs[2] = parameters[7];
-  distortion_.unproj_coeffs[3] = parameters[8];
-  distortion_.unproj_coeffs[4] = parameters[9];
+  common_params_.cx = parameters[0];
+  common_params_.cy = parameters[1];
+  distortion_.unproj_coeffs[0] = parameters[2];
+  distortion_.unproj_coeffs[1] = parameters[3];
+  distortion_.unproj_coeffs[2] = parameters[4];
+  distortion_.unproj_coeffs[3] = parameters[5];
+  distortion_.unproj_coeffs[4] = parameters[6];
 
   estimate_projection_coefficients(point3d_vec, point2d_vec);
 }
