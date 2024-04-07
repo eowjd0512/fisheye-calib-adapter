@@ -10,6 +10,10 @@
 #include <memory>
 #include <string>
 
+#define ERROR_STR(MSG)                                                                     \
+  std::string(__FILE__) + ": " + std::to_string(__LINE__) + ", " + std::string(__func__) + \
+    "(): " + MSG
+
 namespace FCA
 {
 namespace model
