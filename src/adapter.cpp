@@ -2,18 +2,22 @@
 
 #include <nanoflann.hpp>
 
+#include "model/base.hpp"
+#include "opencv2/imgcodecs.hpp"
 #include "utils.hpp"
 namespace FCA
 {
 
 Adapter::Adapter(
-  const FCA::FisheyeCameraModel * const input_model, FCA::FisheyeCameraModel * const output_model)
+  FCA::FisheyeCameraModel * const input_model, FCA::FisheyeCameraModel * const output_model)
 : input_model_(input_model), output_model_(output_model)
 {
+  this->input_model_->parse();
 }
 
 void Adapter::adapt()
 {
+  input_model_->print();
   const auto & common_params = input_model_->get_common_params();
   // Sample points
   constexpr auto NUM_SAMPLE_POINTS = 100000;
@@ -34,10 +38,13 @@ void Adapter::adapt()
     if (point3d.z() > 0.0) {
       point2d_vec_.emplace_back(point2d);
       point3d_vec_.emplace_back(point3d);
+      if (!image_.empty()) {
+        color_vec_.emplace_back(image_.at<cv::Vec3b>(point2d[1], point2d[0]));
+      }
     }
   }
 
-  // this->display_point2d_vec("Input model's projection", point2d_vec_);
+  this->display_point2d_vec("Input model's projection", point2d_vec_);
   // this->display_point3d_vec("Input model's unprojection", point3d_vec_);
 
   std::cout << "sampled point size: " << point3d_vec_.size() << std::endl;
@@ -58,8 +65,11 @@ void Adapter::adapt()
   }
   this->display_point2d_vec("Output model's projection", output_point2d_vec);
 
-  const cv::Mat output_recovered_image =
+  cv::Mat output_recovered_image =
     this->recover_image(common_params.width, common_params.height, point3d_vec_);
+  // cv::resize(
+  //   output_recovered_image, output_recovered_image,
+  //   cv::Size(common_params.width / 2, common_params.height / 2));
   cv::imshow("Output recovered image", output_recovered_image);
   cv::waitKey(0);
 }
@@ -76,11 +86,12 @@ void Adapter::evaluate()
   std::cout << "error: " << error / point3d_vec_.size() << std::endl;
 }
 
-void Adapter::compare_image(const std::string & image_path, bool show)
+void Adapter::set_image(const std::string & image_path)
 {
-  // if(!output_model_->is_estimated()){
-  //   this->adapt();
-  // }
+  image_ = cv::imread(image_path, cv::IMREAD_COLOR);
+  if (image_.empty()) {
+    ERROR_STR("Image read failed");
+  }
 }
 
 void Adapter::display_point2d_vec(
@@ -93,10 +104,14 @@ void Adapter::display_point2d_vec(
 
   for (const auto & point : point2d_vec) {
     cv::Point cvPoint(point[0], point[1]);
-
-    cv::circle(image, cvPoint, 1, cv::Scalar(255, 255, 255), -1);
+    cv::Scalar color = cv::Scalar(255, 255, 255);
+    if (!image_.empty()) {
+      color = image_.at<cv::Vec3b>(point[1], point[0]);
+    }
+    cv::circle(image, cvPoint, 3, color, -1);
   }
 
+  // cv::resize(image, image, cv::Size(width / 2, height / 2));
   cv::imshow(name, image);
   cv::waitKey(0);
 }
@@ -115,7 +130,7 @@ void Adapter::display_point3d_vec(
 
     if (!color_vec_.empty()) {
       const auto & color = color_vec_.at(i);
-      cv_colors.emplace_back(color[0], color[1], color[2]);
+      cv_colors.emplace_back(color);
     } else {
       cv_colors.emplace_back(255, 255, 255);
     }
@@ -171,7 +186,7 @@ cv::Mat Adapter::recover_image(
         if (out_dist_sqr > THRESHOLD) continue;
 
         // get the value of color from color_vec_ using the found index
-        Eigen::Vector3d color(255., 255., 255.);
+        cv::Scalar color(255., 255., 255.);
         if (!color_vec_.empty()) {
           color = color_vec_[ret_index];
         }

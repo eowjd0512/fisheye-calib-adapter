@@ -13,7 +13,7 @@ class Adapter
 {
 public:
   Adapter(
-    const FCA::FisheyeCameraModel * const input_model,
+    FCA::FisheyeCameraModel * const input_model,
     FCA::FisheyeCameraModel * const output_model);
 
   void adapt();
@@ -29,16 +29,18 @@ public:
   cv::Mat recover_image(
     double width, double height, const std::vector<Eigen::Vector3d> & point3d_vec) const;
 
-  void compare_image(const std::string & image_path, bool show = false);
+  void set_image(const std::string & image_path);
 
 private:
   std::vector<Eigen::Vector2d> sample_points(int32_t width, int32_t height, int n);
 
-  const FCA::FisheyeCameraModel * const input_model_;
+  FCA::FisheyeCameraModel * const input_model_;
   FCA::FisheyeCameraModel * const output_model_;
   std::vector<Eigen::Vector2d> point2d_vec_;
   std::vector<Eigen::Vector3d> point3d_vec_;
-  std::vector<Eigen::Vector3d> color_vec_;
+  std::vector<cv::Vec3b> color_vec_;
+
+  cv::Mat image_;
 };
 }  // namespace FCA
 #endif

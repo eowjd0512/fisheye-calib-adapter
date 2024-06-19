@@ -8,7 +8,6 @@ namespace model
 KB8::KB8(const std::string & model_name, const std::string & config_path)
 : Base(model_name, config_path)
 {
-  parse();
 }
 
 void KB8::parse()

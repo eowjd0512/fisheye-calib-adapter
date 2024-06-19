@@ -8,7 +8,6 @@ namespace model
 DoubleSphere::DoubleSphere(const std::string & model_name, const std::string & config_path)
 : Base(model_name, config_path)
 {
-  parse();
 }
 
 void DoubleSphere::parse()
@@ -56,7 +55,6 @@ void DoubleSphere::initialize(
     const double d = std::sqrt((X * X) + (Y * Y) + (Z * Z));
     const double u_cx = u - common_params_.cx;
     const double v_cy = v - common_params_.cy;
-    // distortion_.alpha = ((common_params_.fx * X) - (u_cx * Z)) / (u_cx * (d - Z));
 
     A(i * 2, 0) = u_cx * (d - Z);
     A(i * 2 + 1, 0) = v_cy * (d - Z);
@@ -108,8 +106,8 @@ Eigen::Vector3d DoubleSphere::unproject(const Eigen::Vector2d & point2d) const
   const double u = point2d.x();
   const double v = point2d.y();
   const double gamma = 1.0 - alpha;
-  const double mx = (u - cx) / fx * gamma;
-  const double my = (v - cy) / fy * gamma;
+  const double mx = (u - cx) / fx;
+  const double my = (v - cy) / fy;
   const double r_squared = (mx * mx) + (my * my);
   const double mz = (1.0 - alpha * alpha * r_squared) /
                     (alpha * std::sqrt(1.0 - (2.0 * alpha - 1.0) * r_squared) + gamma);

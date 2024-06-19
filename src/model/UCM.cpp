@@ -52,7 +52,6 @@ void UCM::initialize(
     const double d = std::sqrt((X * X) + (Y * Y) + (Z * Z));
     const double u_cx = u - common_params_.cx;
     const double v_cy = v - common_params_.cy;
-    // distortion_.alpha = ((common_params_.fx * X) - (u_cx * Z)) / (u_cx * (d - Z));
 
     A(i * 2, 0) = u_cx * (d - Z);
     A(i * 2 + 1, 0) = v_cy * (d - Z);
