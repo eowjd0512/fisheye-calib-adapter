@@ -30,7 +30,7 @@ void OcamLib::parse()
   distortion_.c = config["parameter"]["c"].as<double>();
   distortion_.d = config["parameter"]["d"].as<double>();
   distortion_.e = config["parameter"]["e"].as<double>();
-  common_params_.fx = common_params_.fy = distortion_.proj_coeffs.at(0);  // approximation
+  common_params_.fx = common_params_.fy = common_params_.width / 2.0;  // approximation
   common_params_.cx = config["parameter"]["cx"].as<double>();
   common_params_.cy = config["parameter"]["cy"].as<double>();
 }
@@ -178,10 +178,6 @@ void OcamLib::optimize(
     OcamLibAnalyticCostFunction * cost_function =
       new OcamLibAnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
     problem.AddResidualBlock(cost_function, nullptr, parameters);
-    // problem.AddResidualBlock(
-    //   new ceres::AutoDiffCostFunction<OcamLibAutoDiffCostFunctor, 2, 10>(
-    //     new OcamLibAutoDiffCostFunctor(gt_u, gt_v, obs_x, obs_y, obs_z)),
-    //   nullptr, parameters);
   }
   ceres::Solver::Options options;
   options.linear_solver_type = ceres::DENSE_QR;

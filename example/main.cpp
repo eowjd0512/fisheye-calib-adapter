@@ -7,8 +7,8 @@
 int main(int argc, char ** argv)
 {
   // Default values
-  std::string input_model_name = "KB8";
-  std::string output_model_name = "OcamLib";
+  std::string input_model_name = "OcamLib";
+  std::string output_model_name = "KB8";
   std::string dataset_path = std::string(PROJECT_SOURCE_DIR) + "/dataset/kalibr";
   std::string result_path = std::string(PROJECT_SOURCE_DIR) + "/result";
 

@@ -62,16 +62,13 @@ public:
   virtual bool Evaluate(
     double const * const * parameters, double * residuals, double ** jacobians) const
   {
-    const double c = parameters[0][0];
-    const double d = parameters[0][1];
-    const double e = parameters[0][2];
-    const double cx = parameters[0][3];
-    const double cy = parameters[0][4];
-    const double k0 = parameters[0][5];
-    const double k1 = parameters[0][6];
-    const double k2 = parameters[0][7];
-    const double k3 = parameters[0][8];
-    const double k4 = parameters[0][9];
+    const double cx = parameters[0][0];
+    const double cy = parameters[0][1];
+    const double k0 = parameters[0][2];
+    const double k1 = parameters[0][3];
+    const double k2 = parameters[0][4];
+    const double k3 = parameters[0][5];
+    const double k4 = parameters[0][6];
 
     const double u_cx = gt_u_ - cx;
     const double v_cy = gt_v_ - cy;
