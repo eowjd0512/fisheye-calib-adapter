@@ -79,7 +79,7 @@ public:
     const double r3 = r * r2;
     const double r4 = r2 * r2;
 
-    const double theta = k0 + k1 * r + k2 * r2 + k3 * r3 + k4 * r4;
+    const double theta = -(k0 + k1 * r + k2 * r2 + k3 * r3 + k4 * r4);
 
     const double theta_px = theta * px;
     const double theta_py = theta * py;
@@ -143,7 +143,7 @@ struct OcamLibAutoDiffCostFunctor
     T r3 = r * r2;
     T r4 = r2 * r2;
 
-    T theta = k0 + k1 * r + k2 * r2 + k3 * r3 + k4 * r4;
+    T theta = -(k0 + k1 * r + k2 * r2 + k3 * r3 + k4 * r4);
 
     T theta_px = theta * T(px);
     T theta_py = theta * T(py);

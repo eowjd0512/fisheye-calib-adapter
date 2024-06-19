@@ -29,11 +29,6 @@ void Adapter::adapt()
   point3d_vec_.reserve(NUM_SAMPLE_POINTS);
   for (const auto & point2d : sampled_point2d_vec) {
     const Eigen::Vector3d point3d = input_model_->unproject(point2d);
-    const auto point2d_est = input_model_->project(point3d);
-
-    // std::cout << point3d.transpose() << std::endl;
-    // std::cout << point2d.transpose() << std::endl;
-    // std::cout << point2d_est.transpose() << std::endl;
 
     if (point3d.z() > 0.0) {
       point2d_vec_.emplace_back(point2d);

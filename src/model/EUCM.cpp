@@ -144,10 +144,11 @@ bool EUCM::check_unproj_condition(double r_squared, double alpha, double beta)
 {
   bool condition = true;
   if (alpha > 0.5) {
-    if (r_squared > 1.0 / beta * (2 * alpha - 1.0)) {
+    if (r_squared > (1.0 / beta * (2.0 * alpha - 1.0))) {
       condition = false;
     }
   }
+
   return condition;
 }
 
