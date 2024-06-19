@@ -3,6 +3,7 @@
 #include "model/EUCM.hpp"
 #include "model/KB8.hpp"
 #include "model/OcamLib.hpp"
+#include "model/double_sphere.hpp"
 
 namespace FCA
 {
@@ -33,8 +34,10 @@ FisheyeCameraModelPtr Create(const std::string & model_name, const std::string &
     model = std::make_unique<model::KB8>(model_name, dataset_path);
   } else if (model_name == "OcamLib") {
     model = std::make_unique<model::OcamLib>(model_name, dataset_path);
+  } else if (model_name == "DS") {
+    model = std::make_unique<model::DoubleSphere>(model_name, dataset_path);
   } else {
-    std::cerr << "Use Fisheye Camera Model within {UCM, EUCM, DS, KB8, WoodScape, OcamLib}" << std::endl;
+    std::cerr << "Use Fisheye Camera Model within {UCM, EUCM, DS, KB8, OcamLib}" << std::endl;
   }
 
   return std::move(model);

@@ -62,7 +62,7 @@ void DoubleSphere::initialize(
     A(i * 2 + 1, 0) = v_cy * (d - Z);
 
     b[i * 2] = (common_params_.fx * X) - (u_cx * Z);
-    b[i * +1] = (common_params_.fy * Y) - (v_cy * Z);
+    b[i * 2 + 1] = (common_params_.fy * Y) - (v_cy * Z);
   }
 
   const Eigen::VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
@@ -112,7 +112,7 @@ Eigen::Vector3d DoubleSphere::unproject(const Eigen::Vector2d & point2d) const
   const double my = (v - cy) / fy * gamma;
   const double r_squared = (mx * mx) + (my * my);
   const double mz = (1.0 - alpha * alpha * r_squared) /
-                    (alpha * std::sqrt(1.0 - (2 * alpha - 1.0) * r_squared) + gamma);
+                    (alpha * std::sqrt(1.0 - (2.0 * alpha - 1.0) * r_squared) + gamma);
   const double mz_squared = mz * mz;
 
   const double num = mz * xi + std::sqrt(mz_squared + (1.0 - xi * xi) * r_squared);
@@ -176,9 +176,8 @@ void DoubleSphere::optimize(
     problem.AddResidualBlock(cost_function, nullptr, parameters);
 
     // set parameters range
-    problem.SetParameterLowerBound(parameters, 4, 0.0);  // alpha >= 0
-    problem.SetParameterUpperBound(parameters, 4, 1.0);  // alpha <= 1
-    problem.SetParameterLowerBound(parameters, 5, 0.1);  // beta >= 0
+    problem.SetParameterLowerBound(parameters, 4, 0.0001);  // alpha >= 0
+    problem.SetParameterUpperBound(parameters, 4, 0.999);  // alpha <= 1
   }
   ceres::Solver::Options options;
   options.linear_solver_type = ceres::DENSE_QR;

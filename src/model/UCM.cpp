@@ -58,7 +58,7 @@ void UCM::initialize(
     A(i * 2 + 1, 0) = v_cy * (d - Z);
 
     b[i * 2] = (common_params_.fx * X) - (u_cx * Z);
-    b[i * +1] = (common_params_.fy * Y) - (v_cy * Z);
+    b[i * 2 + 1] = (common_params_.fy * Y) - (v_cy * Z);
   }
 
   const Eigen::VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
