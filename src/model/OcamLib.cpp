@@ -35,6 +35,11 @@ void OcamLib::parse()
   common_params_.cy = config["parameter"]["cy"].as<double>();
 }
 
+void OcamLib::set_sample_points(const std::vector<Eigen::Vector2d> & point2d_vec)
+{
+  point2d_vec_ = point2d_vec;
+};
+
 void OcamLib::initialize(
   const Base::Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
@@ -195,7 +200,7 @@ void OcamLib::optimize(
   distortion_.unproj_coeffs[3] = parameters[5];
   distortion_.unproj_coeffs[4] = parameters[6];
 
-  estimate_projection_coefficients(point3d_vec, point2d_vec);
+  estimate_projection_coefficients();
 }
 
 void OcamLib::print() const
@@ -262,16 +267,23 @@ void OcamLib::save_result(const std::string & result_path) const
   fout << std::endl;
 }
 
-void OcamLib::estimate_projection_coefficients(
-  const std::vector<Eigen::Vector3d> & point3d_vec,
-  const std::vector<Eigen::Vector2d> & point2d_vec)
+void OcamLib::estimate_projection_coefficients()
 {
-  assert(point3d_vec.size() == point2d_vec.size());
-
   constexpr auto MAX_POLY_NUM = 12;
 
   std::map<uint32_t, std::vector<double>> coefficient_candidates;
   double max_error = std::numeric_limits<double>::max();
+
+  std::vector<Eigen::Vector3d> point3d_vec;
+  std::vector<Eigen::Vector2d> point2d_vec;
+  for(const auto& point2d: point2d_vec_){
+    const auto point3d = this->unproject(point2d);
+    if(point3d.z() > 0.0){
+      point3d_vec.emplace_back(point3d);
+      point2d_vec.emplace_back(point2d);
+    }
+  }
+
   int32_t best_poly_num = -1;
   for (auto n = 0; n <= MAX_POLY_NUM; ++n) {
     // set polynomial coefficients for projection

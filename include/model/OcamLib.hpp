@@ -24,6 +24,7 @@ public:
   OcamLib(const std::string & model_name, const std::string & config_path);
 
   void parse() override;
+  void set_sample_points(const std::vector<Eigen::Vector2d> & point2d_vec) override;
   void initialize(
     const Base::Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
     const std::vector<Eigen::Vector2d> & point2d_vec) override;
@@ -35,9 +36,7 @@ public:
   void print() const override;
   void save_result(const std::string & result_path) const override;
 
-  void estimate_projection_coefficients(
-    const std::vector<Eigen::Vector3d> & point3d_vec,
-    const std::vector<Eigen::Vector2d> & point2d_vec);
+  void estimate_projection_coefficients();
 
   double calculate_average_error(
     const std::vector<Eigen::Vector3d> & point3d_vec,
@@ -47,6 +46,8 @@ public:
 
 private:
   Params distortion_;
+  std::vector<Eigen::Vector3d> point3d_vec_;
+  std::vector<Eigen::Vector2d> point2d_vec_;
 };
 
 class OcamLibAnalyticCostFunction : public ceres::SizedCostFunction<2, 7>

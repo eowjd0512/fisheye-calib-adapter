@@ -27,6 +27,8 @@ void EUCM::parse()
   distortion_.beta = config["parameter"]["beta"].as<double>();
 }
 
+void EUCM::set_sample_points(const std::vector<Eigen::Vector2d> & point2d_vec){};
+
 void EUCM::initialize(
   const Base::Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)

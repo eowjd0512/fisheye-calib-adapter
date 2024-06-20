@@ -44,6 +44,7 @@ void Adapter::adapt()
 
   std::cout << "sampled point size: " << point3d_vec_.size() << std::endl;
   // Initialize output model
+  output_model_->set_sample_points(sampled_point2d_vec); // only for OcamLib
   output_model_->initialize(common_params, point3d_vec_, point2d_vec_);
 
   // Optimize output model

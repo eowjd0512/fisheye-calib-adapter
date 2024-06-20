@@ -27,6 +27,8 @@ void UCM::parse()
   distortion_.alpha = config["parameter"]["alpha"].as<double>();
 }
 
+void UCM::set_sample_points(const std::vector<Eigen::Vector2d> & point2d_vec){};
+
 void UCM::initialize(
   const Base::Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)

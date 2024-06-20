@@ -11,6 +11,7 @@ Custom::Custom(const std::string & model_name, const std::string & config_path)
 }
 
 void Custom::parse() {}
+void Custom::set_sample_points(const std::vector<Eigen::Vector2d> & point2d_vec){};
 void Custom::initialize(
   const Base::Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
