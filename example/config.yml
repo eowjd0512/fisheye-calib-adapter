@@ -1,0 +1,16 @@
+dataset_path: "dataset/kalibr"
+
+# possible models : EUCM, DS, UCM, KB, OcamLib
+input_model: "EUCM"
+output_model: "OcamLib"
+
+image_name: "image.png"
+show_image: true
+
+sample_point: 100000
+
+result_path: "result"
+save_result: false
+
+display_optimization_progress: false
+evaluation: true

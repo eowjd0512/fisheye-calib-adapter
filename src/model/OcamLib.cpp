@@ -92,7 +92,7 @@ void OcamLib::initialize(
   distortion_.unproj_coeffs = std::vector<double>(x.data(), x.data() + x.size());
 }
 
-Eigen::Vector2d OcamLib::project(const Eigen::Vector3d & point3d) const
+Eigen::Vector2d OcamLib::project(const Eigen::Vector3d & point3d, bool condition) const
 {
   const double X = point3d.x();
   const double Y = point3d.y();
@@ -118,7 +118,7 @@ Eigen::Vector2d OcamLib::project(const Eigen::Vector3d & point3d) const
   return point2d;
 }
 
-Eigen::Vector3d OcamLib::unproject(const Eigen::Vector2d & point2d) const
+Eigen::Vector3d OcamLib::unproject(const Eigen::Vector2d & point2d, bool condition) const
 {
   const double u = point2d.x();
   const double v = point2d.y();
@@ -153,7 +153,7 @@ bool OcamLib::check_proj_condition(double z) { return z > 0.0; }
 
 void OcamLib::optimize(
   const std::vector<Eigen::Vector3d> & point3d_vec,
-  const std::vector<Eigen::Vector2d> & point2d_vec)
+  const std::vector<Eigen::Vector2d> & point2d_vec, bool display_optimization_progress)
 {
   double parameters[7] = {
     common_params_.cx,
@@ -186,11 +186,16 @@ void OcamLib::optimize(
   }
   ceres::Solver::Options options;
   options.linear_solver_type = ceres::DENSE_QR;
-  options.minimizer_progress_to_stdout = true;
+  options.minimizer_progress_to_stdout = false;
+  if (display_optimization_progress) {
+    options.minimizer_progress_to_stdout = true;
+  }
+
   ceres::Solver::Summary summary;
   ceres::Solve(options, &problem, &summary);
-
-  std::cout << summary.FullReport() << std::endl;
+  if (display_optimization_progress) {
+    std::cout << summary.FullReport() << std::endl;
+  }
 
   common_params_.cx = parameters[0];
   common_params_.cy = parameters[1];
@@ -205,7 +210,7 @@ void OcamLib::optimize(
 
 void OcamLib::print() const
 {
-  std::cout << "Final parameters: "
+  std::cout << "OcamLib parameters: "
             << "c=" << distortion_.c << ", "
             << "d=" << distortion_.d << ", "
             << "e=" << distortion_.e << ", "
@@ -276,9 +281,9 @@ void OcamLib::estimate_projection_coefficients()
 
   std::vector<Eigen::Vector3d> point3d_vec;
   std::vector<Eigen::Vector2d> point2d_vec;
-  for(const auto& point2d: point2d_vec_){
-    const auto point3d = this->unproject(point2d);
-    if(point3d.z() > 0.0){
+  for (const auto & point2d : point2d_vec_) {
+    const auto point3d = this->unproject(point2d, true);
+    if (point3d.z() > 0.0) {
       point3d_vec.emplace_back(point3d);
       point2d_vec.emplace_back(point2d);
     }
@@ -339,7 +344,7 @@ double OcamLib::calculate_average_error(
     const auto & point3d = point3d_vec.at(i);
     const auto & point2d = point2d_vec.at(i);
 
-    const Eigen::Vector2d estimated_point2d = project(point3d);
+    const Eigen::Vector2d estimated_point2d = project(point3d, true);
     distance_sum += (point2d - estimated_point2d).norm();
   }
   return distance_sum / point3d_vec.size();

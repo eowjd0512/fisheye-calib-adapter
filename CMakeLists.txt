@@ -17,7 +17,7 @@ set(SOURCE_FILES
         src/utils.cpp
         src/model/double_sphere.cpp
         src/model/EUCM.cpp
-        src/model/KB8.cpp
+        src/model/KB.cpp
         src/model/OcamLib.cpp
         src/model/UCM.cpp
         )

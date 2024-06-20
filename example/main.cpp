@@ -1,73 +1,53 @@
+#include <filesystem>
 #include <string>
+
+#include <opencv2/core/utils/logger.hpp>
 
 #include "adapter.hpp"
 #include "model/base.hpp"
 #include "utils.hpp"
 
+namespace fs = std::filesystem;
+
 int main(int argc, char ** argv)
 {
-  // Default values
-  std::string input_model_name = "EUCM";
-  std::string output_model_name = "OcamLib";
-  std::string dataset_path = std::string(PROJECT_SOURCE_DIR) + "/dataset/OcamLib";
-  std::string result_path = std::string(PROJECT_SOURCE_DIR) + "/result";
+   cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_SILENT);
 
-  FCA::Parse(argc, argv, input_model_name, output_model_name, dataset_path, result_path);
+  fs::path project_dir = PROJECT_SOURCE_DIR;
+  fs::path config_path = project_dir / argv[1];
 
-  FCA::FisheyeCameraModelPtr input_model = FCA::Create(input_model_name, dataset_path);
-  FCA::FisheyeCameraModelPtr output_model = FCA::Create(output_model_name, dataset_path);
+  const YAML::Node config = YAML::LoadFile(config_path.string());
 
-  FCA::Adapter adapter(input_model.get(), output_model.get());
-  adapter.set_image(dataset_path + "/image.jpg");
+  fs::path dataset_path = project_dir / config["dataset_path"].as<std::string>();
+  fs::path result_path = project_dir / config["result_path"].as<std::string>();
+
+  const std::string input_model_name = config["input_model"].as<std::string>();
+  const std::string output_model_name = config["output_model"].as<std::string>();
+
+  FCA::FisheyeCameraModelPtr input_model = FCA::Create(input_model_name, dataset_path.string());
+  FCA::FisheyeCameraModelPtr output_model = FCA::Create(output_model_name, dataset_path.string());
+
+  FCA::Adapter::Config fca_config;
+  fca_config.sample_point = config["sample_point"].as<int32_t>();
+  fca_config.display_optimization_progress = config["display_optimization_progress"].as<bool>();
+  FCA::Adapter adapter(fca_config, input_model.get(), output_model.get());
+
+  const std::string image_name = config["image_name"].as<std::string>();
+  adapter.set_image((dataset_path / image_name).string());
+
+  // Adapt!
   adapter.adapt();
-  adapter.evaluate();
 
-  // output_model->save_result(result_path);
+  if (config["show_image"].as<bool>()) {
+    adapter.show_image();
+  }
 
+  if (config["save_result"].as<bool>()) {
+    output_model->save_result(result_path.string());
+  }
+
+  if (config["evaluation"].as<bool>()) {
+    adapter.evaluate();
+  }
   return 0;
 }
-
-// #include <opencv2/opencv.hpp>
-// #include <string>
-// #include <iomanip>
-// #include <sstream>
-
-// int main() {
-//     // 비디오 파일 경로
-//     std::string dataset_path = std::string(PROJECT_SOURCE_DIR) + "/dataset/";
-//     std::string videoPath = dataset_path + "sample_video.mp4";
-
-//     // 비디오를 열기 위한 객체 생성
-//     cv::VideoCapture cap(videoPath);
-
-//     // 비디오 파일 열기 실패 시
-//     if (!cap.isOpened()) {
-//         std::cerr << "Error opening video file" << std::endl;
-//         return -1;
-//     }
-
-//     cv::Mat frame;
-//     int frameNumber = 0;
-
-//     while (true) {
-//         // 비디오에서 프레임을 읽음
-//         cap >> frame;
-
-//         // 프레임이 비어있으면 종료 (비디오 끝)
-//         if (frame.empty()) {
-//             break;
-//         }
-
-//         // 파일 이름을 000.jpg, 001.jpg 형식으로 생성
-//         std::stringstream ss;
-//         ss << std::setw(3) << std::setfill('0') << frameNumber << ".jpg";
-
-//         // 이미지 파일로 저장
-//         cv::imwrite(dataset_path + "output/" + ss.str(), frame);
-
-//         // 프레임 번호 증가
-//         frameNumber++;
-//     }
-
-//     return 0;
-// }

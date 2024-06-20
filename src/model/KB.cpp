@@ -1,16 +1,16 @@
-#include "model/KB8.hpp"
+#include "model/KB.hpp"
 
 namespace FCA
 {
 namespace model
 {
 
-KB8::KB8(const std::string & model_name, const std::string & config_path)
+KB::KB(const std::string & model_name, const std::string & config_path)
 : Base(model_name, config_path)
 {
 }
 
-void KB8::parse()
+void KB::parse()
 {
   // Load the YAML file
   const YAML::Node config = YAML::LoadFile(config_path_ + "/" + model_name_ + ".yml");
@@ -29,9 +29,9 @@ void KB8::parse()
   distortion_.k4 = config["parameter"]["k4"].as<double>();
 }
 
-void KB8::set_sample_points(const std::vector<Eigen::Vector2d> & point2d_vec){};
+void KB::set_sample_points(const std::vector<Eigen::Vector2d> & point2d_vec){};
 
-void KB8::initialize(
+void KB::initialize(
   const Base::Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
 {
@@ -79,14 +79,16 @@ void KB8::initialize(
   distortion_.k4 = x[3];
 }
 
-Eigen::Vector2d KB8::project(const Eigen::Vector3d & point3d) const
+Eigen::Vector2d KB::project(const Eigen::Vector3d & point3d, bool condition) const
 {
   const double X = point3d.x();
   const double Y = point3d.y();
   const double Z = point3d.z();
 
-  if (!check_proj_condition(Z)) {
-    return {-1., -1.};
+  if (condition) {
+    if (!check_proj_condition(Z)) {
+      return {-1., -1.};
+    }
   }
 
   const double r = std::sqrt((X * X) + (Y * Y));
@@ -106,7 +108,7 @@ Eigen::Vector2d KB8::project(const Eigen::Vector3d & point3d) const
   return point2d;
 }
 
-Eigen::Vector3d KB8::unproject(const Eigen::Vector2d & point2d) const
+Eigen::Vector3d KB::unproject(const Eigen::Vector2d & point2d, bool condition) const
 {
   const double u = point2d.x();
   const double v = point2d.y();
@@ -162,11 +164,11 @@ Eigen::Vector3d KB8::unproject(const Eigen::Vector2d & point2d) const
   return point3d;
 }
 
-bool KB8::check_proj_condition(double z) { return z > 0.0; }
+bool KB::check_proj_condition(double z) { return z > 0.0; }
 
-void KB8::optimize(
+void KB::optimize(
   const std::vector<Eigen::Vector3d> & point3d_vec,
-  const std::vector<Eigen::Vector2d> & point2d_vec)
+  const std::vector<Eigen::Vector2d> & point2d_vec, bool display_optimization_progress)
 {
   double parameters[8] = {common_params_.fx, common_params_.fy, common_params_.cx,
                           common_params_.cy, distortion_.k1,    distortion_.k2,
@@ -188,18 +190,22 @@ void KB8::optimize(
     if (!check_proj_condition(obs_z)) {
       continue;
     }
-    KB8AnalyticCostFunction * cost_function =
-      new KB8AnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
+    KBAnalyticCostFunction * cost_function =
+      new KBAnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
     problem.AddResidualBlock(cost_function, nullptr, parameters);
   }
   ceres::Solver::Options options;
   options.linear_solver_type = ceres::DENSE_QR;
-  options.minimizer_progress_to_stdout = true;
+  options.minimizer_progress_to_stdout = false;
+  if (display_optimization_progress) {
+    options.minimizer_progress_to_stdout = true;
+  }
 
   ceres::Solver::Summary summary;
   ceres::Solve(options, &problem, &summary);
-
-  std::cout << summary.FullReport() << std::endl;
+  if (display_optimization_progress) {
+    std::cout << summary.FullReport() << std::endl;
+  }
 
   common_params_.fx = parameters[0];
   common_params_.fy = parameters[1];
@@ -211,9 +217,9 @@ void KB8::optimize(
   distortion_.k4 = parameters[7];
 }
 
-void KB8::print() const
+void KB::print() const
 {
-  std::cout << "Final parameters: "
+  std::cout << "KB parameters: "
             << "fx=" << common_params_.fx << ", "
             << "fy=" << common_params_.fy << ", "
             << "cx=" << common_params_.cx << ", "
@@ -224,7 +230,7 @@ void KB8::print() const
             << "k4=" << distortion_.k4 << std::endl;
 }
 
-void KB8::save_result(const std::string & result_path) const
+void KB::save_result(const std::string & result_path) const
 {
   YAML::Emitter out;
 

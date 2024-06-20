@@ -34,7 +34,7 @@ void Pinhole::initialize(
   std::cerr << ERROR_STR("NOT SUPPORTED YET") << std::endl;
 }
 
-Eigen::Vector2d Pinhole::project(const Eigen::Vector3d & point3d) const
+Eigen::Vector2d Pinhole::project(const Eigen::Vector3d & point3d, bool condition) const
 {
   if (point3d.z() <= 0.0) {
     return {-1., -1.};
@@ -45,7 +45,7 @@ Eigen::Vector2d Pinhole::project(const Eigen::Vector3d & point3d) const
   return {u, v};
 }
 
-Eigen::Vector3d Pinhole::unproject(const Eigen::Vector2d & point2d) const
+Eigen::Vector3d Pinhole::unproject(const Eigen::Vector2d & point2d, bool condition) const
 {
   const double x = (point2d.x() - common_params_.cx) / common_params_.fx;
   const double y = (point2d.y() - common_params_.cy) / common_params_.fy;
@@ -58,14 +58,14 @@ Eigen::Vector3d Pinhole::unproject(const Eigen::Vector2d & point2d) const
 
 void Pinhole::optimize(
   const std::vector<Eigen::Vector3d> & point3d_vec,
-  const std::vector<Eigen::Vector2d> & point2d_vec)
+  const std::vector<Eigen::Vector2d> & point2d_vec, bool display_optimization_progress)
 {
   std::cerr << ERROR_STR("NOT SUPPORTED YET") << std::endl;
 }
 
 void Pinhole::print() const
 {
-  std::cout << "Final parameters: "
+  std::cout << "Pinhole parameters: "
             << "fx=" << common_params_.fx << ", "
             << "fy=" << common_params_.fy << ", "
             << "cx=" << common_params_.cx << ", "

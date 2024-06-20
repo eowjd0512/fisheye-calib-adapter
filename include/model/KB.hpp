@@ -9,7 +9,7 @@ namespace FCA
 {
 namespace model
 {
-class KB8 : public Base
+class KB : public Base
 {
 public:
   struct Params
@@ -20,18 +20,18 @@ public:
     double k4;
   };
 
-  KB8(const std::string & model_name, const std::string & config_path);
+  KB(const std::string & model_name, const std::string & config_path);
 
   void parse() override;
   void set_sample_points(const std::vector<Eigen::Vector2d> & point2d_vec) override;
   void initialize(
     const Base::Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
     const std::vector<Eigen::Vector2d> & point2d_vec) override;
-  Eigen::Vector2d project(const Eigen::Vector3d & point3d) const override;
-  Eigen::Vector3d unproject(const Eigen::Vector2d & point2d) const override;
+  Eigen::Vector2d project(const Eigen::Vector3d & point3d, bool condition) const override;
+  Eigen::Vector3d unproject(const Eigen::Vector2d & point2d, bool condition) const override;
   void optimize(
     const std::vector<Eigen::Vector3d> & point3d_vec,
-    const std::vector<Eigen::Vector2d> & point2d_vec) override;
+    const std::vector<Eigen::Vector2d> & point2d_vec, bool display_optimization_progress) override;
   void print() const override;
   void save_result(const std::string & result_path) const override;
 
@@ -41,15 +41,15 @@ private:
   Params distortion_;
 };
 
-class KB8AnalyticCostFunction : public ceres::SizedCostFunction<2, 8>
+class KBAnalyticCostFunction : public ceres::SizedCostFunction<2, 8>
 {
 public:
-  KB8AnalyticCostFunction(double gt_u, double gt_v, double obs_x, double obs_y, double obs_z)
+  KBAnalyticCostFunction(double gt_u, double gt_v, double obs_x, double obs_y, double obs_z)
   : gt_u_(gt_u), gt_v_(gt_v), obs_x_(obs_x), obs_y_(obs_y), obs_z_(obs_z)
   {
   }
 
-  virtual ~KB8AnalyticCostFunction() {}
+  virtual ~KBAnalyticCostFunction() {}
 
   virtual bool Evaluate(
     double const * const * parameters, double * residuals, double ** jacobians) const
@@ -104,9 +104,9 @@ private:
   const double gt_u_, gt_v_, obs_x_, obs_y_, obs_z_;
 };
 
-struct KB8AutoDiffCostFunctor
+struct KBAutoDiffCostFunctor
 {
-  KB8AutoDiffCostFunctor(double gt_u, double gt_v, double obs_x, double obs_y, double obs_z)
+  KBAutoDiffCostFunctor(double gt_u, double gt_v, double obs_x, double obs_y, double obs_z)
   : gt_u_(gt_u), gt_v_(gt_v), obs_x_(obs_x), obs_y_(obs_y), obs_z_(obs_z)
   {
   }

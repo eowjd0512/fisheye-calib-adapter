@@ -9,8 +9,9 @@ namespace FCA
 {
 
 Adapter::Adapter(
-  FCA::FisheyeCameraModel * const input_model, FCA::FisheyeCameraModel * const output_model)
-: input_model_(input_model), output_model_(output_model)
+  const Config & config, FCA::FisheyeCameraModel * const input_model,
+  FCA::FisheyeCameraModel * const output_model)
+: config_(config), input_model_(input_model), output_model_(output_model)
 {
   this->input_model_->parse();
 }
@@ -19,14 +20,14 @@ void Adapter::adapt()
 {
   input_model_->print();
   const auto & common_params = input_model_->get_common_params();
+
   // Sample points
-  constexpr auto NUM_SAMPLE_POINTS = 100000;
   const std::vector<Eigen::Vector2d> sampled_point2d_vec =
-    this->sample_points(common_params.width, common_params.height, NUM_SAMPLE_POINTS);
+    this->sample_points(common_params.width, common_params.height, config_.sample_point);
 
   // Unproject samples from input model and associate <3D, 2D>
-  point2d_vec_.reserve(NUM_SAMPLE_POINTS);
-  point3d_vec_.reserve(NUM_SAMPLE_POINTS);
+  point2d_vec_.reserve(config_.sample_point);
+  point3d_vec_.reserve(config_.sample_point);
   for (const auto & point2d : sampled_point2d_vec) {
     const Eigen::Vector3d point3d = input_model_->unproject(point2d);
 
@@ -39,59 +40,165 @@ void Adapter::adapt()
     }
   }
 
-  this->display_point2d_vec("Input model's projection", point2d_vec_);
-  // this->display_point3d_vec("Input model's unprojection", point3d_vec_);
-
-  std::cout << "sampled point size: " << point3d_vec_.size() << std::endl;
   // Initialize output model
-  output_model_->set_sample_points(sampled_point2d_vec); // only for OcamLib
+  output_model_->set_sample_points(sampled_point2d_vec);  // only for OcamLib
   output_model_->initialize(common_params, point3d_vec_, point2d_vec_);
 
   // Optimize output model
-  output_model_->optimize(point3d_vec_, point2d_vec_);
+  output_model_->optimize(point3d_vec_, point2d_vec_, config_.display_optimization_progress);
   output_model_->print();
+}
 
-  std::vector<Eigen::Vector2d> output_point2d_vec;
-  output_point2d_vec.reserve(point3d_vec_.size());
-  for (const auto & point3d : point3d_vec_) {
-    const Eigen::Vector2d point2d = input_model_->project(point3d);
-    if (point2d.y() >= 0.0) {
-      output_point2d_vec.emplace_back(point2d);
+void Adapter::show_image()
+{
+  std::vector<Eigen::Vector2d> original_point2d_vec;
+  std::vector<Eigen::Vector2d> input_point2d_vec;
+  std::vector<Eigen::Vector2d> input_to_output_point2d_vec;
+
+  this->prepare_data(original_point2d_vec, input_point2d_vec, input_to_output_point2d_vec);
+
+  cv::Mat original_image = this->get_image(original_point2d_vec);
+  cv::Mat input_model_image = this->get_image(input_point2d_vec);
+  cv::Mat input_output_model_image = this->get_image(input_to_output_point2d_vec);
+
+  cv::imshow("Original image", original_image);
+  cv::imshow("Input model's projection", input_model_image);
+  cv::imshow("Output model's projection", input_output_model_image);
+
+  cv::waitKey(0);
+}
+void Adapter::prepare_data(
+  std::vector<Eigen::Vector2d> & original_point2d_vec,
+  std::vector<Eigen::Vector2d> & input_point2d_vec,
+  std::vector<Eigen::Vector2d> & output_point2d_vec)
+{
+  const auto & common_params = output_model_->get_common_params();
+  for (auto x = 0; x < common_params.width; ++x) {
+    for (auto y = 0; y < common_params.height; ++y) {
+      Eigen::Vector2d point2d(x, y);
+      const Eigen::Vector3d input_point3d = input_model_->unproject(point2d, false);
+      // const Eigen::Vector3d output_point3d = output_model_->unproject(point2d, false);
+      const Eigen::Vector2d input_point2d = input_model_->project(input_point3d, false);
+      const Eigen::Vector2d output_point2d = output_model_->project(input_point3d, false);
+      original_point2d_vec.emplace_back(point2d);
+      input_point2d_vec.emplace_back(input_point2d);
+      output_point2d_vec.emplace_back(output_point2d);
     }
   }
-  this->display_point2d_vec("Output model's projection", output_point2d_vec);
-
-  cv::Mat output_recovered_image =
-    this->recover_image(common_params.width, common_params.height, point3d_vec_);
-  // cv::resize(
-  //   output_recovered_image, output_recovered_image,
-  //   cv::Size(common_params.width / 2, common_params.height / 2));
-  cv::imshow("Output recovered image", output_recovered_image);
-  cv::waitKey(0);
 }
 
 void Adapter::evaluate()
 {
-  double error = 0.0;
+  evaluate_reprojection_error();
+
+  if (!image_.empty()) {
+    std::vector<Eigen::Vector2d> original_point2d_vec;
+    std::vector<Eigen::Vector2d> input_point2d_vec;
+    std::vector<Eigen::Vector2d> output_point2d_vec;
+    this->prepare_data(original_point2d_vec, input_point2d_vec, output_point2d_vec);
+
+    cv::Mat original_img = this->get_image(original_point2d_vec);
+    cv::Mat input_model_img = this->get_image(input_point2d_vec);
+    cv::Mat input_to_output_model_img = this->get_image(output_point2d_vec);
+
+    std::cout << "psnr from input model to output model: "
+              << calculate_psnr(original_img, input_to_output_model_img) << std::endl;
+    std::cout << "ssim from input model to output model: "
+              << calculate_ssim(original_img, input_to_output_model_img) << std::endl;
+
+    // evaluate_psnr(original_img, input_model_img, input_to_output_model_img);
+    // evaluate_ssim(original_img, input_model_img, input_to_output_model_img);
+  }
+}
+
+void Adapter::evaluate_reprojection_error()
+{
+  double output_model_error = 0.0;
+
   for (auto i = 0U; i < point3d_vec_.size(); ++i) {
     const auto & point3d = point3d_vec_.at(i);
     const auto & point2d = point2d_vec_.at(i);
-    const Eigen::Vector2d projected_point2d = input_model_->project(point3d);
-    error += (point2d - projected_point2d).norm();
+    const Eigen::Vector2d output_point2d = output_model_->project(point3d);
+    output_model_error += (point2d - output_point2d).norm();
   }
-  std::cout << "error: " << error / point3d_vec_.size() << std::endl;
+  std::cout << "reprojection error from input model to output model: "
+            << output_model_error / point3d_vec_.size() << std::endl;
+}
+
+void Adapter::evaluate_psnr(
+  const cv::Mat & original_img, const cv::Mat & input_model_img, const cv::Mat & output_model_img)
+{
+  std::cout << "psnr from input model to output model: "
+            << calculate_psnr(original_img, input_model_img) << std::endl;
+}
+void Adapter::evaluate_ssim(
+  const cv::Mat & original_img, const cv::Mat & input_model_img, const cv::Mat & output_model_img)
+{
+  std::cout << "input_model_ssim: " << calculate_ssim(original_img, input_model_img) << std::endl;
+  std::cout << "output_model_ssim: " << calculate_ssim(original_img, output_model_img) << std::endl;
+}
+
+double Adapter::calculate_psnr(const cv::Mat & img1, const cv::Mat & img2)
+{
+  return cv::PSNR(img1, img2);
+}
+
+double Adapter::calculate_ssim(const cv::Mat & img1, const cv::Mat & img2)
+{
+  const double C1 = 6.5025, C2 = 58.5225;
+  int d = CV_32F;
+
+  cv::Mat I1, I2;
+  img1.convertTo(I1, d);
+  img2.convertTo(I2, d);
+
+  cv::Mat I1_2 = I1.mul(I1);   // I1^2
+  cv::Mat I2_2 = I2.mul(I2);   // I2^2
+  cv::Mat I1_I2 = I1.mul(I2);  // I1 * I2
+
+  cv::Mat mu1, mu2;
+  cv::GaussianBlur(I1, mu1, cv::Size(11, 11), 1.5);
+  cv::GaussianBlur(I2, mu2, cv::Size(11, 11), 1.5);
+
+  cv::Mat mu1_2 = mu1.mul(mu1);
+  cv::Mat mu2_2 = mu2.mul(mu2);
+  cv::Mat mu1_mu2 = mu1.mul(mu2);
+
+  cv::Mat sigma1_2, sigma2_2, sigma12;
+
+  cv::GaussianBlur(I1_2, sigma1_2, cv::Size(11, 11), 1.5);
+  sigma1_2 -= mu1_2;
+
+  cv::GaussianBlur(I2_2, sigma2_2, cv::Size(11, 11), 1.5);
+  sigma2_2 -= mu2_2;
+
+  cv::GaussianBlur(I1_I2, sigma12, cv::Size(11, 11), 1.5);
+  sigma12 -= mu1_mu2;
+
+  cv::Mat t1, t2, t3;
+  t1 = 2.0 * mu1_mu2 + C1;
+  t2 = 2.0 * sigma12 + C2;
+  t3 = t1.mul(t2);  // t3 = ((2*mu1_mu2 + C1).*(2*sigma12 + C2))
+
+  t1 = mu1_2 + mu2_2 + C1;
+  t2 = sigma1_2 + sigma2_2 + C2;
+  t1 = t1.mul(t2);  // t1 = ((mu1_2 + mu2_2 + C1).*(sigma1_2 + sigma2_2 + C2))
+
+  cv::Mat ssim_map;
+  cv::divide(t3, t1, ssim_map);  // ssim_map = t3./t1;
+  cv::Scalar mssim = cv::mean(ssim_map);
+  return mssim.val[0];
 }
 
 void Adapter::set_image(const std::string & image_path)
 {
   image_ = cv::imread(image_path, cv::IMREAD_COLOR);
   if (image_.empty()) {
-    ERROR_STR("Image read failed");
+    std::cerr << "Image read failed" << std::endl;
   }
 }
 
-void Adapter::display_point2d_vec(
-  const std::string & name, const std::vector<Eigen::Vector2d> & point2d_vec) const
+cv::Mat Adapter::get_image(const std::vector<Eigen::Vector2d> & point2d_vec) const
 {
   const double width = input_model_->get_common_params().width;
   const double height = input_model_->get_common_params().height;
@@ -99,17 +206,19 @@ void Adapter::display_point2d_vec(
   cv::Mat image(height, width, CV_8UC3, cv::Scalar(0, 0, 0));
 
   for (const auto & point : point2d_vec) {
-    cv::Point cvPoint(point[0], point[1]);
-    cv::Scalar color = cv::Scalar(255, 255, 255);
-    if (!image_.empty()) {
-      color = image_.at<cv::Vec3b>(point[1], point[0]);
-    }
-    cv::circle(image, cvPoint, 3, color, -1);
-  }
+    const auto u = point[0];
+    const auto v = point[1];
 
-  // cv::resize(image, image, cv::Size(width / 2, height / 2));
-  cv::imshow(name, image);
-  cv::waitKey(0);
+    if ((u >= 0.0) && (u < width) && (v >= 0.0) && (v < height)) {
+      cv::Point cvPoint(point[0], point[1]);
+      cv::Scalar color = cv::Scalar(255, 255, 255);
+      if (!image_.empty()) {
+        color = image_.at<cv::Vec3b>(point[1], point[0]);
+      }
+      cv::circle(image, cvPoint, 1, color, -1);
+    }
+  }
+  return image;
 }
 
 void Adapter::display_point3d_vec(

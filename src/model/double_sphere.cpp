@@ -71,7 +71,7 @@ void DoubleSphere::initialize(
   std::cout << "initialized alpha: " << distortion_.alpha << std::endl;
 }
 
-Eigen::Vector2d DoubleSphere::project(const Eigen::Vector3d & point3d) const
+Eigen::Vector2d DoubleSphere::project(const Eigen::Vector3d & point3d, bool condition) const
 {
   const double X = point3d.x();
   const double Y = point3d.y();
@@ -84,9 +84,11 @@ Eigen::Vector2d DoubleSphere::project(const Eigen::Vector3d & point3d) const
 
   const double denom = distortion_.alpha * d2 + (1.0 - distortion_.alpha) * gamma;
 
-  constexpr double PRECISION = 1e-3;
-  if ((denom < PRECISION) || !check_proj_condition(Z, d1, distortion_.xi, distortion_.alpha)) {
-    return {-1, -1};
+  if (condition) {
+    constexpr double PRECISION = 1e-3;
+    if ((denom < PRECISION) || !check_proj_condition(Z, d1, distortion_.xi, distortion_.alpha)) {
+      return {-1, -1};
+    }
   }
 
   Eigen::Vector2d point2d;
@@ -96,7 +98,7 @@ Eigen::Vector2d DoubleSphere::project(const Eigen::Vector3d & point3d) const
   return point2d;
 }
 
-Eigen::Vector3d DoubleSphere::unproject(const Eigen::Vector2d & point2d) const
+Eigen::Vector3d DoubleSphere::unproject(const Eigen::Vector2d & point2d, bool condition) const
 {
   const double fx = common_params_.fx;
   const double fy = common_params_.fy;
@@ -118,9 +120,11 @@ Eigen::Vector3d DoubleSphere::unproject(const Eigen::Vector2d & point2d) const
   const double num = mz * xi + std::sqrt(mz_squared + (1.0 - xi * xi) * r_squared);
   const double denom = mz_squared + r_squared;
 
-  constexpr double PRECISION = 1e-3;
-  if ((denom < PRECISION) || !check_unproj_condition(r_squared, alpha)) {
-    return {-1, -1, -1};
+  if (condition) {
+    constexpr double PRECISION = 1e-3;
+    if ((denom < PRECISION) || !check_unproj_condition(r_squared, alpha)) {
+      return {-1, -1, -1};
+    }
   }
 
   const double coeff = num / denom;
@@ -154,7 +158,7 @@ bool DoubleSphere::check_unproj_condition(double r_squared, double alpha)
 
 void DoubleSphere::optimize(
   const std::vector<Eigen::Vector3d> & point3d_vec,
-  const std::vector<Eigen::Vector2d> & point2d_vec)
+  const std::vector<Eigen::Vector2d> & point2d_vec, bool display_optimization_progress)
 {
   double parameters[6] = {common_params_.fx, common_params_.fy, common_params_.cx,
                           common_params_.cy, distortion_.alpha, distortion_.xi};
@@ -177,16 +181,20 @@ void DoubleSphere::optimize(
 
     // set parameters range
     problem.SetParameterLowerBound(parameters, 4, 0.0001);  // alpha >= 0
-    problem.SetParameterUpperBound(parameters, 4, 0.999);  // alpha <= 1
+    problem.SetParameterUpperBound(parameters, 4, 0.999);   // alpha <= 1
   }
   ceres::Solver::Options options;
   options.linear_solver_type = ceres::DENSE_QR;
-  options.minimizer_progress_to_stdout = true;
+  options.minimizer_progress_to_stdout = false;
+  if (display_optimization_progress) {
+    options.minimizer_progress_to_stdout = true;
+  }
 
   ceres::Solver::Summary summary;
   ceres::Solve(options, &problem, &summary);
-
-  std::cout << summary.FullReport() << std::endl;
+  if (display_optimization_progress) {
+    std::cout << summary.FullReport() << std::endl;
+  }
 
   common_params_.fx = parameters[0];
   common_params_.fy = parameters[1];
@@ -198,7 +206,7 @@ void DoubleSphere::optimize(
 
 void DoubleSphere::print() const
 {
-  std::cout << "Final parameters: "
+  std::cout << "DS parameters: "
             << "fx=" << common_params_.fx << ", "
             << "fy=" << common_params_.fy << ", "
             << "cx=" << common_params_.cx << ", "

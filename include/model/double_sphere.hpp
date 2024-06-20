@@ -25,11 +25,11 @@ public:
   void initialize(
     const Base::Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
     const std::vector<Eigen::Vector2d> & point2d_vec) override;
-  Eigen::Vector2d project(const Eigen::Vector3d & point3d) const override;
-  Eigen::Vector3d unproject(const Eigen::Vector2d & point2d) const override;
+  Eigen::Vector2d project(const Eigen::Vector3d & point3d, bool condition) const override;
+  Eigen::Vector3d unproject(const Eigen::Vector2d & point2d, bool condition) const override;
   void optimize(
     const std::vector<Eigen::Vector3d> & point3d_vec,
-    const std::vector<Eigen::Vector2d> & point2d_vec) override;
+    const std::vector<Eigen::Vector2d> & point2d_vec, bool display_optimization_progress) override;
   void print() const override;
   void save_result(const std::string & result_path) const override;
 
