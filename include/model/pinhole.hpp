@@ -26,6 +26,7 @@ public:
     const std::vector<Eigen::Vector2d> & point2d_vec, bool display_optimization_progress) override;
   void print() const override;
   void save_result(const std::string & result_path) const override;
+  void evaluate(const model::Base * const gt) override;
 
 private:
 };

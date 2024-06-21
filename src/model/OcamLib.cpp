@@ -15,7 +15,13 @@ OcamLib::OcamLib(const std::string & model_name, const std::string & config_path
 void OcamLib::parse()
 {
   // Load the YAML file
-  const YAML::Node config = YAML::LoadFile(config_path_ + "/" + model_name_ + ".yml");
+  YAML::Node config;
+  try {
+    config = YAML::LoadFile(config_path_ + "/" + model_name_ + ".yml");
+  } catch (const YAML::BadFile & e) {
+    std::cerr << "Error loading YAML file: " << e.what() << std::endl;
+    exit(-1);
+  }
 
   common_params_.width = config["image"]["width"].as<int32_t>();
   common_params_.height = config["image"]["height"].as<int32_t>();
@@ -210,7 +216,7 @@ void OcamLib::optimize(
 
 void OcamLib::print() const
 {
-  std::cout << "OcamLib parameters: "
+  std::cout << model_name_ << " parameters: "
             << "c=" << distortion_.c << ", "
             << "d=" << distortion_.d << ", "
             << "e=" << distortion_.e << ", "
@@ -350,5 +356,35 @@ double OcamLib::calculate_average_error(
   return distance_sum / point3d_vec.size();
 }
 
+void OcamLib::evaluate(const model::Base * const gt)
+{
+  const OcamLib * gt_model = dynamic_cast<const OcamLib *>(gt);
+
+  const auto & est_pinhole_params = this->common_params_;
+  const auto & gt_pinhole_params = gt_model->get_common_params();
+  const auto & est_distortion_params = this->distortion_;
+  const auto & gt_distortion_params = gt_model->get_distortion_params();
+
+  const double diff_cx = est_pinhole_params.cx - gt_pinhole_params.cx;
+  const double diff_cy = est_pinhole_params.cy - gt_pinhole_params.cy;
+
+  const double diff_c = est_distortion_params.c - gt_distortion_params.c;
+  const double diff_d = est_distortion_params.d - gt_distortion_params.d;
+  const double diff_e = est_distortion_params.e - gt_distortion_params.e;
+
+  double squared_norm_diff_distortion_coeffs = 0.0;
+  for (auto i = 0; i < est_distortion_params.unproj_coeffs.size(); ++i) {
+    const double diff =
+      est_distortion_params.unproj_coeffs[i] - gt_distortion_params.unproj_coeffs[i];
+
+    squared_norm_diff_distortion_coeffs += (diff * diff);
+  }
+
+  const double params_diff_norm = std::sqrt(
+    diff_cx * diff_cx + diff_cy * diff_cy + diff_c * diff_c + diff_d * diff_d + diff_e * diff_e +
+    squared_norm_diff_distortion_coeffs);
+
+  std::cout << "parameter error: " << params_diff_norm << std::endl;
+}
 }  // namespace model
 }  // namespace FCA

@@ -9,8 +9,8 @@ namespace FCA
 {
 
 Adapter::Adapter(
-  const Config & config, FCA::FisheyeCameraModel * const input_model,
-  FCA::FisheyeCameraModel * const output_model)
+  const Config & config, FisheyeCameraModel * const input_model,
+  FisheyeCameraModel * const output_model)
 : config_(config), input_model_(input_model), output_model_(output_model)
 {
   this->input_model_->parse();
@@ -18,7 +18,7 @@ Adapter::Adapter(
 
 void Adapter::adapt()
 {
-  input_model_->print();
+  // input_model_->print();
   const auto & common_params = input_model_->get_common_params();
 
   // Sample points
@@ -46,10 +46,12 @@ void Adapter::adapt()
 
   // Optimize output model
   output_model_->optimize(point3d_vec_, point2d_vec_, config_.display_optimization_progress);
-  output_model_->print();
+  // output_model_->print();
+
+  // display_point3d_vec("3d points", point3d_vec_);
 }
 
-void Adapter::show_image()
+void Adapter::show_image(const std::string & result_path)
 {
   std::vector<Eigen::Vector2d> original_point2d_vec;
   std::vector<Eigen::Vector2d> input_point2d_vec;
@@ -65,6 +67,9 @@ void Adapter::show_image()
   cv::imshow("Input model's projection", input_model_image);
   cv::imshow("Output model's projection", input_output_model_image);
 
+  cv::imwrite(result_path + "/original_image.png", original_image);
+  cv::imwrite(result_path + "/input_model_image.png", input_model_image);
+  cv::imwrite(result_path + "/input_to_output_model_image.png", input_output_model_image);
   cv::waitKey(0);
 }
 void Adapter::prepare_data(
@@ -87,7 +92,7 @@ void Adapter::prepare_data(
   }
 }
 
-void Adapter::evaluate()
+void Adapter::evaluate(FisheyeCameraModel * const gt_output_model)
 {
   evaluate_reprojection_error();
 
@@ -105,9 +110,11 @@ void Adapter::evaluate()
               << calculate_psnr(original_img, input_to_output_model_img) << std::endl;
     std::cout << "ssim from input model to output model: "
               << calculate_ssim(original_img, input_to_output_model_img) << std::endl;
+  }
 
-    // evaluate_psnr(original_img, input_model_img, input_to_output_model_img);
-    // evaluate_ssim(original_img, input_model_img, input_to_output_model_img);
+  if (gt_output_model) {
+    gt_output_model->parse();
+    output_model_->evaluate(gt_output_model);
   }
 }
 
@@ -123,19 +130,6 @@ void Adapter::evaluate_reprojection_error()
   }
   std::cout << "reprojection error from input model to output model: "
             << output_model_error / point3d_vec_.size() << std::endl;
-}
-
-void Adapter::evaluate_psnr(
-  const cv::Mat & original_img, const cv::Mat & input_model_img, const cv::Mat & output_model_img)
-{
-  std::cout << "psnr from input model to output model: "
-            << calculate_psnr(original_img, input_model_img) << std::endl;
-}
-void Adapter::evaluate_ssim(
-  const cv::Mat & original_img, const cv::Mat & input_model_img, const cv::Mat & output_model_img)
-{
-  std::cout << "input_model_ssim: " << calculate_ssim(original_img, input_model_img) << std::endl;
-  std::cout << "output_model_ssim: " << calculate_ssim(original_img, output_model_img) << std::endl;
 }
 
 double Adapter::calculate_psnr(const cv::Mat & img1, const cv::Mat & img2)
@@ -228,10 +222,11 @@ void Adapter::display_point3d_vec(
   std::vector<cv::Vec3b> cv_colors;
   cv_points_3d.reserve(point3d_vec_.size());
   cv_colors.reserve(point3d_vec_.size());
+  constexpr auto SCALE = 3.0;
   for (auto i = 0U; i < point3d_vec_.size(); ++i) {
     const auto & point3d = point3d_vec_.at(i);
 
-    cv_points_3d.emplace_back(point3d.x(), point3d.y(), point3d.z());
+    cv_points_3d.emplace_back(point3d.x() * SCALE, point3d.y() * SCALE, point3d.z() * SCALE);
 
     if (!color_vec_.empty()) {
       const auto & color = color_vec_.at(i);

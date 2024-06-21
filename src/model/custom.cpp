@@ -32,5 +32,7 @@ void Custom::optimize(
 void Custom::print() const {}
 
 void Custom::save_result(const std::string& result_path) const {}
+
+void Custom::evaluate(const model::Base * const gt){}
 }  // namespace model
 }  // namespace FCA

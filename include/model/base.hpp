@@ -52,7 +52,7 @@ public:
     bool display_optimization_progress = false) = 0;
   virtual void print() const = 0;
   virtual void save_result(const std::string & result_path) const = 0;
-
+  virtual void evaluate(const model::Base * const gt) = 0;
   const Params & get_common_params() const { return common_params_; };
 
 protected:

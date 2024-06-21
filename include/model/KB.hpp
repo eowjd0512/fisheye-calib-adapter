@@ -36,7 +36,8 @@ public:
   void save_result(const std::string & result_path) const override;
 
   static bool check_proj_condition(double z);
-
+  void evaluate(const model::Base * const gt) override;
+  const Params & get_distortion_params() const { return distortion_; };
 private:
   Params distortion_;
 };

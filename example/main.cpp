@@ -1,7 +1,7 @@
+#include <chrono>
 #include <filesystem>
-#include <string>
-
 #include <opencv2/core/utils/logger.hpp>
+#include <string>
 
 #include "adapter.hpp"
 #include "model/base.hpp"
@@ -11,7 +11,7 @@ namespace fs = std::filesystem;
 
 int main(int argc, char ** argv)
 {
-   cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_SILENT);
+  cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_SILENT);
 
   fs::path project_dir = PROJECT_SOURCE_DIR;
   fs::path config_path = project_dir / argv[1];
@@ -26,9 +26,15 @@ int main(int argc, char ** argv)
 
   FCA::FisheyeCameraModelPtr input_model = FCA::Create(input_model_name, dataset_path.string());
   FCA::FisheyeCameraModelPtr output_model = FCA::Create(output_model_name, dataset_path.string());
+  FCA::FisheyeCameraModelPtr gt_output_model =
+    FCA::Create(output_model_name, dataset_path.string());
+
+  // for (auto i = 1; i <= 10000;) {
+  //   std::cout << i << " ";
 
   FCA::Adapter::Config fca_config;
   fca_config.sample_point = config["sample_point"].as<int32_t>();
+  // fca_config.sample_point = i;
   fca_config.display_optimization_progress = config["display_optimization_progress"].as<bool>();
   FCA::Adapter adapter(fca_config, input_model.get(), output_model.get());
 
@@ -36,10 +42,14 @@ int main(int argc, char ** argv)
   adapter.set_image((dataset_path / image_name).string());
 
   // Adapt!
+  std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
   adapter.adapt();
+  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  auto sec = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+  std::cout << "computing time(ms): " << sec.count() << std::endl;
 
   if (config["show_image"].as<bool>()) {
-    adapter.show_image();
+    adapter.show_image(result_path.string());
   }
 
   if (config["save_result"].as<bool>()) {
@@ -47,7 +57,18 @@ int main(int argc, char ** argv)
   }
 
   if (config["evaluation"].as<bool>()) {
-    adapter.evaluate();
+    adapter.evaluate(gt_output_model.get());
   }
+
+  //   if (i < 10) {
+  //     i += 1;
+  //   } else if (i < 100) {
+  //     i += 10;
+  //   } else if (i < 1000) {
+  //     i += 100;
+  //   } else if (i <= 10000) {
+  //     i += 1000;
+  //   }
+  // }
   return 0;
 }

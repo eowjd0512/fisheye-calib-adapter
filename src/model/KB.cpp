@@ -13,7 +13,13 @@ KB::KB(const std::string & model_name, const std::string & config_path)
 void KB::parse()
 {
   // Load the YAML file
-  const YAML::Node config = YAML::LoadFile(config_path_ + "/" + model_name_ + ".yml");
+  YAML::Node config;
+  try {
+    config = YAML::LoadFile(config_path_ + "/" + model_name_ + ".yml");
+  } catch (const YAML::BadFile & e) {
+    std::cerr << "Error loading YAML file: " << e.what() << std::endl;
+    exit(-1);
+  }
 
   common_params_.width = config["image"]["width"].as<int32_t>();
   common_params_.height = config["image"]["height"].as<int32_t>();
@@ -219,7 +225,7 @@ void KB::optimize(
 
 void KB::print() const
 {
-  std::cout << "KB parameters: "
+  std::cout << model_name_ << " parameters: "
             << "fx=" << common_params_.fx << ", "
             << "fy=" << common_params_.fy << ", "
             << "cx=" << common_params_.cx << ", "
@@ -259,6 +265,31 @@ void KB::save_result(const std::string & result_path) const
   std::ofstream fout(result_path + "/" + model_name_ + ".yml");
   fout << out.c_str();
   fout << std::endl;
+}
+
+void KB::evaluate(const model::Base * const gt)
+{
+  const KB * gt_model = dynamic_cast<const KB *>(gt);
+
+  const auto & est_pinhole_params = this->common_params_;
+  const auto & gt_pinhole_params = gt_model->get_common_params();
+  const auto & est_distortion_params = this->distortion_;
+  const auto & gt_distortion_params = gt_model->get_distortion_params();
+
+  const double diff_fx = est_pinhole_params.fx - gt_pinhole_params.fx;
+  const double diff_fy = est_pinhole_params.fy - gt_pinhole_params.fy;
+  const double diff_cx = est_pinhole_params.cx - gt_pinhole_params.cx;
+  const double diff_cy = est_pinhole_params.cy - gt_pinhole_params.cy;
+  const double diff_k1 = est_distortion_params.k1 - gt_distortion_params.k1;
+  const double diff_k2 = est_distortion_params.k2 - gt_distortion_params.k2;
+  const double diff_k3 = est_distortion_params.k3 - gt_distortion_params.k3;
+  const double diff_k4 = est_distortion_params.k4 - gt_distortion_params.k4;
+
+  const double params_diff_norm = std::sqrt(
+    diff_fx * diff_fx + diff_fy * diff_fy + diff_cx * diff_cx + diff_cy * diff_cy +
+    diff_k1 * diff_k1 + diff_k2 * diff_k2 + diff_k3 * diff_k3 + diff_k4 * diff_k4);
+
+  std::cout << "parameter error: " << params_diff_norm << std::endl;
 }
 }  // namespace model
 }  // namespace FCA

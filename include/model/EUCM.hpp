@@ -35,7 +35,8 @@ public:
 
   static bool check_proj_condition(double z, double denom, double alpha, double beta);
   static bool check_unproj_condition(double r_squared, double alpha, double beta);
-
+  void evaluate(const model::Base * const gt) override;
+  const Params & get_distortion_params() const { return distortion_; };
 private:
   Params distortion_;
 };

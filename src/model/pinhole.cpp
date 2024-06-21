@@ -12,7 +12,13 @@ Pinhole::Pinhole(const std::string & model_name, const std::string & config_path
 void Pinhole::parse()
 {
   // Load the YAML file
-  const YAML::Node config = YAML::LoadFile(config_path_ + "/" + model_name_ + ".yml");
+  YAML::Node config;
+  try {
+    config = YAML::LoadFile(config_path_ + "/" + model_name_ + ".yml");
+  } catch (const YAML::BadFile & e) {
+    std::cerr << "Error loading YAML file: " << e.what() << std::endl;
+    exit(-1);
+  }
 
   common_params_.width = config["image"]["width"].as<int32_t>();
   common_params_.height = config["image"]["height"].as<int32_t>();
@@ -65,7 +71,7 @@ void Pinhole::optimize(
 
 void Pinhole::print() const
 {
-  std::cout << "Pinhole parameters: "
+  std::cout << model_name_ << " parameters: "
             << "fx=" << common_params_.fx << ", "
             << "fy=" << common_params_.fy << ", "
             << "cx=" << common_params_.cx << ", "
@@ -98,5 +104,7 @@ void Pinhole::save_result(const std::string & result_path) const
   fout << out.c_str();
   fout << std::endl;
 }
+
+void Pinhole::evaluate(const model::Base * const gt) {}
 }  // namespace model
 }  // namespace FCA

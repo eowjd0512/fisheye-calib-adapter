@@ -8,13 +8,18 @@ namespace model
 UCM::UCM(const std::string & model_name, const std::string & config_path)
 : Base(model_name, config_path)
 {
-  parse();
 }
 
 void UCM::parse()
 {
   // Load the YAML file
-  const YAML::Node config = YAML::LoadFile(config_path_ + "/" + model_name_ + ".yml");
+  YAML::Node config;
+  try {
+    config = YAML::LoadFile(config_path_ + "/" + model_name_ + ".yml");
+  } catch (const YAML::BadFile & e) {
+    std::cerr << "Error loading YAML file: " << e.what() << std::endl;
+    exit(-1);
+  }
 
   common_params_.width = config["image"]["width"].as<int32_t>();
   common_params_.height = config["image"]["height"].as<int32_t>();
@@ -64,8 +69,6 @@ void UCM::initialize(
 
   const Eigen::VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
   distortion_.alpha = x[0];
-
-  std::cout << "initialized alpha: " << distortion_.alpha << std::endl;
 }
 
 Eigen::Vector2d UCM::project(const Eigen::Vector3d & point3d, bool condition) const
@@ -169,9 +172,9 @@ void UCM::optimize(
     problem.AddResidualBlock(cost_function, nullptr, parameters);
 
     // set parameters range
-    problem.SetParameterLowerBound(parameters, 4, 0.0);  // alpha >= 0
-    problem.SetParameterUpperBound(parameters, 4, 1.0);  // alpha <= 1
-    problem.SetParameterLowerBound(parameters, 5, 0.1);  // beta >= 0
+    constexpr double EPS = 1e-3;
+    problem.SetParameterLowerBound(parameters, 4, 0.0 + EPS);  // alpha >= 0
+    problem.SetParameterUpperBound(parameters, 4, 1.0 - EPS);  // alpha <= 1
   }
   ceres::Solver::Options options;
   options.linear_solver_type = ceres::DENSE_QR;
@@ -195,7 +198,7 @@ void UCM::optimize(
 
 void UCM::print() const
 {
-  std::cout << "UCM parameters: "
+  std::cout << model_name_ << " parameters: "
             << "fx=" << common_params_.fx << ", "
             << "fy=" << common_params_.fy << ", "
             << "cx=" << common_params_.cx << ", "
@@ -228,6 +231,28 @@ void UCM::save_result(const std::string & result_path) const
   std::ofstream fout(result_path + "/" + model_name_ + ".yml");
   fout << out.c_str();
   fout << std::endl;
+}
+
+void UCM::evaluate(const model::Base * const gt)
+{
+  const UCM * gt_model = dynamic_cast<const UCM *>(gt);
+
+  const auto & est_pinhole_params = this->common_params_;
+  const auto & gt_pinhole_params = gt_model->get_common_params();
+  const auto & est_distortion_params = this->distortion_;
+  const auto & gt_distortion_params = gt_model->get_distortion_params();
+
+  const double diff_fx = est_pinhole_params.fx - gt_pinhole_params.fx;
+  const double diff_fy = est_pinhole_params.fy - gt_pinhole_params.fy;
+  const double diff_cx = est_pinhole_params.cx - gt_pinhole_params.cx;
+  const double diff_cy = est_pinhole_params.cy - gt_pinhole_params.cy;
+  const double diff_alpha = est_distortion_params.alpha - gt_distortion_params.alpha;
+
+  const double params_diff_norm = std::sqrt(
+    diff_fx * diff_fx + diff_fy * diff_fy + diff_cx * diff_cx + diff_cy * diff_cy +
+    diff_alpha * diff_alpha);
+
+  std::cout << "parameter error: " << params_diff_norm << std::endl;
 }
 }  // namespace model
 }  // namespace FCA
