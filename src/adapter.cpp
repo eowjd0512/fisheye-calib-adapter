@@ -18,7 +18,7 @@ Adapter::Adapter(
 
 void Adapter::adapt()
 {
-  // input_model_->print();
+  input_model_->print();
   const auto & common_params = input_model_->get_common_params();
 
   // Sample points
@@ -46,7 +46,7 @@ void Adapter::adapt()
 
   // Optimize output model
   output_model_->optimize(point3d_vec_, point2d_vec_, config_.display_optimization_progress);
-  // output_model_->print();
+  output_model_->print();
 
   // display_point3d_vec("3d points", point3d_vec_);
 }

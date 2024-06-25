@@ -2,12 +2,12 @@ dataset_path: "dataset/OcamLib"
 
 # possible models : EUCM, DS, UCM, KB, OcamLib
 input_model: "KB"
-output_model: "OcamLib"
+output_model: "EUCM"
 
 image_name: "image.jpg"
-show_image: true
+show_image: false
 
-sample_point: 100000
+sample_point: 500
 
 result_path: "result"
 save_result: false
