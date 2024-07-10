@@ -1,11 +1,11 @@
-dataset_path: "dataset/OcamLib"
+dataset_path: "dataset/kalibr"
 
 # possible models : EUCM, DS, UCM, KB, OcamLib
 input_model: "KB"
 output_model: "EUCM"
 
-image_name: "image.jpg"
-show_image: false
+image_name: "image.png"
+show_image: true
 
 sample_point: 500
 
