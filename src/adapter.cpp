@@ -67,9 +67,9 @@ void Adapter::show_image(const std::string & result_path)
   cv::imshow("Input model's projection", input_model_image);
   cv::imshow("Output model's projection", input_output_model_image);
 
-  cv::imwrite(result_path + "/original_image.png", original_image);
-  cv::imwrite(result_path + "/input_model_image.png", input_model_image);
-  cv::imwrite(result_path + "/input_to_output_model_image.png", input_output_model_image);
+  // cv::imwrite(result_path + "/original_image.png", original_image);
+  // cv::imwrite(result_path + "/input_model_image.png", input_model_image);
+  // cv::imwrite(result_path + "/input_to_output_model_image.png", input_output_model_image);
   cv::waitKey(0);
 }
 void Adapter::prepare_data(

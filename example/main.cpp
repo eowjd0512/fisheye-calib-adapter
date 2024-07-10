@@ -29,9 +29,6 @@ int main(int argc, char ** argv)
   FCA::FisheyeCameraModelPtr gt_output_model =
     FCA::Create(output_model_name, dataset_path.string());
 
-  // for (auto i = 1; i <= 10000;) {
-  //   std::cout << i << " ";
-
   FCA::Adapter::Config fca_config;
   fca_config.sample_point = config["sample_point"].as<int32_t>();
   // fca_config.sample_point = i;
@@ -60,15 +57,5 @@ int main(int argc, char ** argv)
     adapter.evaluate(gt_output_model.get());
   }
 
-  //   if (i < 10) {
-  //     i += 1;
-  //   } else if (i < 100) {
-  //     i += 10;
-  //   } else if (i < 1000) {
-  //     i += 100;
-  //   } else if (i <= 10000) {
-  //     i += 1000;
-  //   }
-  // }
   return 0;
 }
