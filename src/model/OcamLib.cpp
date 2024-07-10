@@ -90,8 +90,8 @@ void OcamLib::initialize(
     A(2 * i + 1, 2) = r2;
     A(2 * i + 1, 3) = r3;
     A(2 * i + 1, 4) = r4;
-    b[2 * i] = -(u - common_params_.cx) * (Z / X);
-    b[2 * i + 1] = -(v - common_params_.cy) * (Z / Y);
+    b[2 * i] = (u - common_params_.cx) * (Z / X);
+    b[2 * i + 1] = (v - common_params_.cy) * (Z / Y);
   }
 
   const Eigen::VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
@@ -104,7 +104,7 @@ Eigen::Vector2d OcamLib::project(const Eigen::Vector3d & point3d, bool condition
   const double Y = point3d.y();
   const double Z = point3d.z();
   const double r = std::sqrt((X * X) + (Y * Y));
-  const double theta = atan(-Z / r);
+  const double theta = atan(Z / r);
 
   double rho = distortion_.proj_coeffs.at(0);
   double theta_i = 1.0;
@@ -150,7 +150,7 @@ Eigen::Vector3d OcamLib::unproject(const Eigen::Vector2d & point2d, bool conditi
   Eigen::Vector3d point3d;
   point3d.x() = mx / norm;
   point3d.y() = my / norm;
-  point3d.z() = -mz / norm;
+  point3d.z() = mz / norm;
 
   return point3d;
 }
@@ -310,7 +310,7 @@ void OcamLib::estimate_projection_coefficients()
       const double u = point2d.x();
       const double v = point2d.y();
       const double r = std::sqrt((X * X) + (Y * Y));
-      const double theta = atan(-Z / r);
+      const double theta = atan(Z / r);
 
       const double term1 = (distortion_.c * (X / r)) + (distortion_.d * (Y / r));
       const double term2 = (distortion_.e * (X / r)) + (Y / r);
