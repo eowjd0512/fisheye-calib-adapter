@@ -1,8 +1,8 @@
 dataset_path: "dataset/kalibr"
 
-# possible models : EUCM, DS, UCM, KB, OcamLib
+# possible models : EUCM, DS, UCM, KB, OcamCalib
 input_model: "KB"
-output_model: "EUCM"
+output_model: "OcamCalib"
 
 image_name: "image.png"
 show_image: true

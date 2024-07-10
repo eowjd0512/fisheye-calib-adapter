@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef MODEL__OCAMLIB_HPP_
-#define MODEL__OCAMLIB_HPP_
+#ifndef MODEL__OCAMCALIB_HPP_
+#define MODEL__OCAMCALIB_HPP_
 
 #include <string>
 
@@ -33,7 +33,7 @@ namespace FCA
 {
 namespace model
 {
-class OcamLib : public Base
+class OcamCalib : public Base
 {
 public:
   struct Params
@@ -45,7 +45,7 @@ public:
     std::vector<double> unproj_coeffs;
   };
 
-  OcamLib(const std::string & model_name, const std::string & config_path);
+  OcamCalib(const std::string & model_name, const std::string & config_path);
 
   void parse() override;
   void set_sample_points(const std::vector<Eigen::Vector2d> & point2d_vec) override;
@@ -76,15 +76,15 @@ private:
   std::vector<Eigen::Vector2d> point2d_vec_;
 };
 
-class OcamLibAnalyticCostFunction : public ceres::SizedCostFunction<2, 7>
+class OcamCalibAnalyticCostFunction : public ceres::SizedCostFunction<2, 7>
 {
 public:
-  OcamLibAnalyticCostFunction(double gt_u, double gt_v, double obs_x, double obs_y, double obs_z)
+  OcamCalibAnalyticCostFunction(double gt_u, double gt_v, double obs_x, double obs_y, double obs_z)
   : gt_u_(gt_u), gt_v_(gt_v), obs_x_(obs_x), obs_y_(obs_y), obs_z_(obs_z)
   {
   }
 
-  virtual ~OcamLibAnalyticCostFunction() {}
+  virtual ~OcamCalibAnalyticCostFunction() {}
 
   virtual bool Evaluate(
     double const * const * parameters, double * residuals, double ** jacobians) const
@@ -115,15 +115,15 @@ public:
 
     if (jacobians) {
       if (jacobians[0]) {
-        Eigen::Map<Eigen::Matrix<double, 2, 7, Eigen::RowMajor>> jacobian_ocamlib(jacobians[0]);
-        jacobian_ocamlib.col(0) << -1.0, 0.0;  // ∂residual_x / ∂cx, ∂residual_y / ∂cx
-        jacobian_ocamlib.col(1) << 0.0, -1.0;  // ∂residual_x / ∂cy, ∂residual_y / ∂cy
+        Eigen::Map<Eigen::Matrix<double, 2, 7, Eigen::RowMajor>> jacobian_ocamcalib(jacobians[0]);
+        jacobian_ocamcalib.col(0) << -1.0, 0.0;  // ∂residual_x / ∂cx, ∂residual_y / ∂cx
+        jacobian_ocamcalib.col(1) << 0.0, -1.0;  // ∂residual_x / ∂cy, ∂residual_y / ∂cy
         // ∂residual / ∂k0..4, ∂residual / ∂theta * ∂theta / ∂k0..4
         Eigen::Vector2d de_dtheta;
         de_dtheta << -px, -py;
         Eigen::Matrix<double, 1, 5> dtheta_dks;
         dtheta_dks << 1, r, r2, r3, r4;
-        jacobian_ocamlib.rightCols<5>() = de_dtheta * dtheta_dks;
+        jacobian_ocamcalib.rightCols<5>() = de_dtheta * dtheta_dks;
       }
     }
 
@@ -134,9 +134,9 @@ private:
   const double gt_u_, gt_v_, obs_x_, obs_y_, obs_z_;
 };
 
-struct OcamLibAutoDiffCostFunctor
+struct OcamCalibAutoDiffCostFunctor
 {
-  OcamLibAutoDiffCostFunctor(double gt_u, double gt_v, double obs_x, double obs_y, double obs_z)
+  OcamCalibAutoDiffCostFunctor(double gt_u, double gt_v, double obs_x, double obs_y, double obs_z)
   : gt_u_(gt_u), gt_v_(gt_v), obs_x_(obs_x), obs_y_(obs_y), obs_z_(obs_z)
   {
   }

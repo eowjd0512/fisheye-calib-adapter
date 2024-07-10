@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "model/OcamLib.hpp"
+#include "model/OcamCalib.hpp"
 
 #include <limits>
 
@@ -31,12 +31,12 @@ namespace FCA
 namespace model
 {
 
-OcamLib::OcamLib(const std::string & model_name, const std::string & config_path)
+OcamCalib::OcamCalib(const std::string & model_name, const std::string & config_path)
 : Base(model_name, config_path)
 {
 }
 
-void OcamLib::parse()
+void OcamCalib::parse()
 {
   // Load the YAML file
   YAML::Node config;
@@ -65,12 +65,12 @@ void OcamLib::parse()
   common_params_.cy = config["parameter"]["cy"].as<double>();
 }
 
-void OcamLib::set_sample_points(const std::vector<Eigen::Vector2d> & point2d_vec)
+void OcamCalib::set_sample_points(const std::vector<Eigen::Vector2d> & point2d_vec)
 {
   point2d_vec_ = point2d_vec;
 };
 
-void OcamLib::initialize(
+void OcamCalib::initialize(
   const Base::Params & common_params, const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
 {
@@ -122,7 +122,7 @@ void OcamLib::initialize(
   distortion_.unproj_coeffs = std::vector<double>(x.data(), x.data() + x.size());
 }
 
-Eigen::Vector2d OcamLib::project(const Eigen::Vector3d & point3d, bool condition) const
+Eigen::Vector2d OcamCalib::project(const Eigen::Vector3d & point3d, bool condition) const
 {
   const double X = point3d.x();
   const double Y = point3d.y();
@@ -148,7 +148,7 @@ Eigen::Vector2d OcamLib::project(const Eigen::Vector3d & point3d, bool condition
   return point2d;
 }
 
-Eigen::Vector3d OcamLib::unproject(const Eigen::Vector2d & point2d, bool condition) const
+Eigen::Vector3d OcamCalib::unproject(const Eigen::Vector2d & point2d, bool condition) const
 {
   const double u = point2d.x();
   const double v = point2d.y();
@@ -179,9 +179,9 @@ Eigen::Vector3d OcamLib::unproject(const Eigen::Vector2d & point2d, bool conditi
   return point3d;
 }
 
-bool OcamLib::check_proj_condition(double z) { return z > 0.0; }
+bool OcamCalib::check_proj_condition(double z) { return z > 0.0; }
 
-void OcamLib::optimize(
+void OcamCalib::optimize(
   const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec, bool display_optimization_progress)
 {
@@ -210,8 +210,8 @@ void OcamLib::optimize(
       continue;
     }
 
-    OcamLibAnalyticCostFunction * cost_function =
-      new OcamLibAnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
+    OcamCalibAnalyticCostFunction * cost_function =
+      new OcamCalibAnalyticCostFunction(gt_u, gt_v, obs_x, obs_y, obs_z);
     problem.AddResidualBlock(cost_function, nullptr, parameters);
   }
   ceres::Solver::Options options;
@@ -238,7 +238,7 @@ void OcamLib::optimize(
   estimate_projection_coefficients();
 }
 
-void OcamLib::print() const
+void OcamCalib::print() const
 {
   std::cout << model_name_ << " parameters: "
             << "c=" << distortion_.c << ", "
@@ -257,7 +257,7 @@ void OcamLib::print() const
   std::cout << std::endl;
 }
 
-void OcamLib::save_result(const std::string & result_path) const
+void OcamCalib::save_result(const std::string & result_path) const
 {
   YAML::Emitter out;
 
@@ -302,7 +302,7 @@ void OcamLib::save_result(const std::string & result_path) const
   fout << std::endl;
 }
 
-void OcamLib::estimate_projection_coefficients()
+void OcamCalib::estimate_projection_coefficients()
 {
   constexpr auto MAX_POLY_NUM = 12;
 
@@ -365,7 +365,7 @@ void OcamLib::estimate_projection_coefficients()
   distortion_.proj_coeffs = coefficient_candidates.at(best_poly_num);
 }
 
-double OcamLib::calculate_average_error(
+double OcamCalib::calculate_average_error(
   const std::vector<Eigen::Vector3d> & point3d_vec,
   const std::vector<Eigen::Vector2d> & point2d_vec)
 {
@@ -380,9 +380,9 @@ double OcamLib::calculate_average_error(
   return distance_sum / point3d_vec.size();
 }
 
-void OcamLib::evaluate(const model::Base * const gt)
+void OcamCalib::evaluate(const model::Base * const gt)
 {
-  const OcamLib * gt_model = dynamic_cast<const OcamLib *>(gt);
+  const OcamCalib * gt_model = dynamic_cast<const OcamCalib *>(gt);
 
   const auto & est_pinhole_params = this->common_params_;
   const auto & gt_pinhole_params = gt_model->get_common_params();

@@ -26,7 +26,7 @@ SOFTWARE.
 
 #include "model/EUCM.hpp"
 #include "model/KB.hpp"
-#include "model/OcamLib.hpp"
+#include "model/OcamCalib.hpp"
 #include "model/UCM.hpp"
 #include "model/double_sphere.hpp"
 
@@ -43,12 +43,12 @@ FisheyeCameraModelPtr Create(const std::string & model_name, const std::string &
     model = std::make_unique<model::UCM>(model_name, dataset_path);
   } else if (model_name == "KB") {
     model = std::make_unique<model::KB>(model_name, dataset_path);
-  } else if (model_name == "OcamLib") {
-    model = std::make_unique<model::OcamLib>(model_name, dataset_path);
+  } else if (model_name == "OcamCalib") {
+    model = std::make_unique<model::OcamCalib>(model_name, dataset_path);
   } else if (model_name == "DS") {
     model = std::make_unique<model::DoubleSphere>(model_name, dataset_path);
   } else {
-    std::cerr << "Use Fisheye Camera Model within {UCM, EUCM, DS, KB, OcamLib}" << std::endl;
+    std::cerr << "Use Fisheye Camera Model within {UCM, EUCM, DS, KB, OcamCalib}" << std::endl;
   }
 
   return std::move(model);

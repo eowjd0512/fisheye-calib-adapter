@@ -18,7 +18,7 @@ set(SOURCE_FILES
         src/model/double_sphere.cpp
         src/model/EUCM.cpp
         src/model/KB.cpp
-        src/model/OcamLib.cpp
+        src/model/OcamCalib.cpp
         src/model/UCM.cpp
         )
 add_library(${PACKAGE_NAME}
