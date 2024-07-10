@@ -55,9 +55,6 @@ public:
   void display_point3d_vec(
     const std::string & name, const std::vector<Eigen::Vector3d> & point3d_vec) const;
 
-  cv::Mat recover_image(
-    double width, double height, const std::vector<Eigen::Vector3d> & point3d_vec) const;
-
   void set_image(const std::string & image_path);
 
   void show_image(const std::string & result_path);

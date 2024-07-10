@@ -24,11 +24,10 @@ SOFTWARE.
 
 #include "adapter.hpp"
 
-#include <nanoflann.hpp>
-
 #include "model/base.hpp"
 #include "opencv2/imgcodecs.hpp"
 #include "utils.hpp"
+
 namespace FCA
 {
 
@@ -267,59 +266,6 @@ void Adapter::display_point3d_vec(
   window.showWidget("Coordinate", cv::viz::WCoordinateSystem());
   window.showWidget("3d points", cloud_widget);
   window.spin();
-}
-
-cv::Mat Adapter::recover_image(
-  double width, double height, const std::vector<Eigen::Vector3d> & point3d_vec) const
-{
-  cv::Mat output_image(height, width, CV_8UC3, cv::Scalar(0, 0, 0));
-
-  PointCloud<double> cloud;
-  cloud.pts.reserve(point3d_vec.size());
-  for (const auto & pt : point3d_vec) {
-    cloud.pts.push_back({pt.x(), pt.y(), pt.z()});
-  }
-
-  using MyKDTreeType = nanoflann::KDTreeSingleIndexAdaptor<
-    nanoflann::L2_Simple_Adaptor<double, PointCloud<double>>, PointCloud<double>, 3 /* dim */
-    >;
-
-  std::cout << "Begin to constructing tree" << std::endl;
-  // register point3d_vec to flann tree
-  MyKDTreeType index(
-    3 /*dim*/, cloud, nanoflann::KDTreeSingleIndexAdaptorParams(10 /* max leaf */));
-  index.buildIndex();
-  std::cout << "End to constructing tree" << std::endl;
-
-  for (auto y = 0; y < height; ++y) {
-    for (auto x = 0; x < width; ++x) {
-      Eigen::Vector2d point2d{x, y};
-      const Eigen::Vector3d point3d = output_model_->unproject(point2d);
-      if (point3d.z() > 0.0) {
-        // find closest point from tree
-        double query_pt[3] = {point3d.x(), point3d.y(), point3d.z()};
-        size_t ret_index;
-        double out_dist_sqr;
-        nanoflann::KNNResultSet<double> resultSet(1);
-        resultSet.init(&ret_index, &out_dist_sqr);
-        index.findNeighbors(resultSet, &query_pt[0], nanoflann::SearchParams(10));
-
-        // if the distance is greater than the threshold, reject
-        // else get the index of found point
-        constexpr auto THRESHOLD = 1e-5;
-        if (out_dist_sqr > THRESHOLD) continue;
-
-        // get the value of color from color_vec_ using the found index
-        cv::Scalar color(255., 255., 255.);
-        if (!color_vec_.empty()) {
-          color = color_vec_[ret_index];
-        }
-        // assign the color at the (y, x) position of the output_image
-        output_image.at<cv::Vec3b>(y, x) = cv::Vec3b(color[0], color[1], color[2]);
-      }
-    }
-  }
-  return output_image;
 }
 
 std::vector<Eigen::Vector2d> Adapter::sample_points(int32_t width, int32_t height, int n)
