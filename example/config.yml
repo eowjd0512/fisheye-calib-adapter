@@ -1,6 +1,6 @@
 dataset_path: "dataset/kalibr"
 
-# possible models : EUCM, DS, UCM, KB, OcamCalib
+# possible models : EUCM, DS, UCM, KB, OcamCalib, RadTan
 input_model: "KB"
 output_model: "EUCM"
 

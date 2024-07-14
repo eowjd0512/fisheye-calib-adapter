@@ -17,6 +17,7 @@ set(SOURCE_FILES
         src/utils.cpp
         src/model/double_sphere.cpp
         src/model/EUCM.cpp
+        src/model/RadTan.cpp
         src/model/KB.cpp
         src/model/OcamCalib.cpp
         src/model/UCM.cpp
