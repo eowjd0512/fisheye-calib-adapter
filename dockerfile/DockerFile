@@ -13,11 +13,16 @@ RUN apt-get update && apt-get install -y \
     libyaml-cpp-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone https://ceres-solver.googlesource.com/ceres-solver /ceres-solver && \
-    mkdir /ceres-solver/build && \
-    cd /ceres-solver/build && \
-    cmake .. && \
-    make -j$(nproc) && \
+RUN git clone --recursive https://github.com/ceres-solver/ceres-solver.git /ceres-solver
+WORKDIR /ceres-solver
+RUN git submodule update --init --recursive
+
+RUN mkdir build &&\
+    cd build &&\
+    cmake .. &&\
+    make -j$(nproc) &&\
     make install
 
 WORKDIR /workspace
+
+CMD ["/bin/bash"]
