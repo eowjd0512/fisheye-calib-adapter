@@ -60,7 +60,7 @@ The config.yml file should include the following parameters:
 
 - **dataset_path**: The root path where the fisheye model is stored.
 - **input_model**, output_model: The input and output models you wish to convert.
-- **image_name**: The name of the image to apply, which must be located within dataset_path.
+- **image_name**: The name of the image to apply if you want, which must be located within dataset_path.
 - **show_image**: Set to true if you want to display the image.
 - **sample_point**: The number of point samples.
 - **result_path**: The path where the output model will be stored.
