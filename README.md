@@ -13,6 +13,8 @@ The Fisheye-Calib-Adapter supports a wide range of fisheye camera models, includ
 - **OCamCalib**
 - **RadTan (Radial-Tangential Distortion Model)**
 
+For those looking to implement a customized camera model, you can utilize the interface provided in include/model/custom.hpp. This allows for the extension and adaptation of the Fisheye-Calib-Adapter to meet specific requirements or to incorporate unique camera models not originally covered by the standard implementation.
+
 ## Requirements
 The system requires the following libraries:
 
