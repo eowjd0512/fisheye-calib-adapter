@@ -52,6 +52,9 @@ To run the tool, use the following command:
 ```
 ./main example/config.yml
 ```
+
+You can figure out the input-output model in the example/config.yml described as below
+
 ## Configuration File Description
 The config.yml file should include the following parameters:
 
