@@ -3,6 +3,12 @@
 ## Overview
 The Fisheye-Calib-Adapter is a conversion tool designed to facilitate seamless transitions between different fisheye camera models. This tool is invaluable for applications in fields like robotics and autonomous driving, where fisheye cameras are increasingly common. It simplifies the process of camera model conversion, eliminating the need for cumbersome recalibrations. The adapter is user-friendly, straightforward, yet precise, offering conversion capabilities for a broader range of models compared to existing tools. It ensures that converted models function correctly in real-world applications such as SLAM, allowing researchers to easily translate input parameters into output parameters without the need for an image set or any recalibration processes.
 
+## Paper
+
+The pre-print paper related to this project can be found at: [Fisheye-Calib-Adapter: An Easy Tool for Fisheye Camera Model Conversion](https://arxiv.org/abs/2407.12405)
+
+This work has been submitted to the IEEE for possible publication. Copyright may be transferred without notice, after which this version may no longer be accessible.
+
 ## Supported Camera Models
 The Fisheye-Calib-Adapter supports a wide range of fisheye camera models, including:
 
