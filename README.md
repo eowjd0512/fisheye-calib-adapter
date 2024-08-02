@@ -75,3 +75,14 @@ The config.yml file should include the following parameters:
 - **save_result**: Set to true to save the output model.
 - **display_optimization_progress**: Displays the optimization process if set to true.
 - **evaluation**: Set to true to perform evaluation (calculates reprojection error, parameter error, RMSE/SSIM if an image is set).
+
+## Citation
+
+If you use Fisheye-Calib-Adapter, please use the following BibTeX entry.
+
+@article{FCA2024,
+  title={Fisheye-Calib-Adapter: An Easy Tool for Fisheye Camera Model Conversion},
+  author={Sangjun Lee},
+  journal={arXiv preprint},
+  year={2024}
+}
