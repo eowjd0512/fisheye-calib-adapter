@@ -253,8 +253,8 @@ cv::Mat Adapter::get_image(const std::vector<Eigen::Vector2d> & point2d_vec) con
   cv::Mat image(height, width, CV_8UC3, cv::Scalar(0, 0, 0));
 
   for (const auto & point : point2d_vec) {
-    const auto u = point[0];
-    const auto v = point[1];
+    const auto u = std::floor(point[0] + 0.5);
+    const auto v = std::floor(point[1] + 0.5);
 
     if ((u >= 0.0) && (u < width) && (v >= 0.0) && (v < height)) {
       cv::Point cvPoint(point[0], point[1]);
