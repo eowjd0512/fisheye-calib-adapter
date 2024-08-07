@@ -84,7 +84,7 @@ If you use Fisheye-Calib-Adapter, please use the following BibTeX entry.
 @article{FCA2024,
   title={Fisheye-Calib-Adapter: An Easy Tool for Fisheye Camera Model Conversion},
   author={Sangjun Lee},
-  journal={arXiv preprint},
+  journal={arXiv preprint arXiv:2407.12405},
   year={2024}
 }
 ```
