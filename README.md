@@ -9,8 +9,6 @@ The pre-print paper related to this project can be found at:
 
 [Fisheye-Calib-Adapter: An Easy Tool for Fisheye Camera Model Conversion](https://arxiv.org/abs/2407.12405)
 
-This work has been submitted to the IEEE for possible publication. Copyright may be transferred without notice, after which this version may no longer be accessible.
-
 ## Supported Camera Models
 The Fisheye-Calib-Adapter supports a wide range of fisheye camera models, including:
 
